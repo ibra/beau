@@ -49,26 +49,26 @@ pub struct Theme {
 }
 
 impl Theme {
-    /// Graphite light.
+    /// The light theme.
     pub fn light() -> Self {
         Self {
             mode: Mode::Light,
             colors: Palette::light(),
-            type_scale: TypeScale::graphite(),
+            type_scale: TypeScale::default(),
             space: Space::default(),
             radius: Radii::default(),
             controls: Controls::default(),
-            elevation: Elevation::graphite(Color32::from_rgb(0x0B, 0x0C, 0x0E), 1.0),
+            elevation: Elevation::from_ink(Color32::from_rgb(0x0C, 0x0C, 0x0C), 1.0),
             motion: MotionTokens::default(),
         }
     }
 
-    /// Graphite dark.
+    /// The dark theme.
     pub fn dark() -> Self {
         Self {
             mode: Mode::Dark,
             colors: Palette::dark(),
-            elevation: Elevation::graphite(Color32::BLACK, 3.2),
+            elevation: Elevation::from_ink(Color32::BLACK, 3.2),
             ..Self::light()
         }
     }
@@ -189,22 +189,50 @@ impl Theme {
     }
 }
 
-fn theme_id() -> Id {
-    Id::unique("beau.theme")
+fn theme_id(mode: Mode) -> Id {
+    match mode {
+        Mode::Light => Id::unique("beau.theme.light"),
+        Mode::Dark => Id::unique("beau.theme.dark"),
+    }
 }
 
-/// Install `theme` on the context: store it, and map it onto egui's own style.
+fn egui_theme(mode: Mode) -> egui::Theme {
+    match mode {
+        Mode::Light => egui::Theme::Light,
+        Mode::Dark => egui::Theme::Dark,
+    }
+}
+
+/// Install `theme` as the theme for its [`Mode`], and map it onto egui's style
+/// for that mode.
 ///
-/// Fonts are installed separately by [`crate::install`].
+/// beau keeps one theme per mode. Which one is active follows egui's theme
+/// preference (see [`set_preference`]), so following the OS light/dark setting
+/// works out of the box. Fonts are installed separately by [`crate::install`].
+///
+/// ```
+/// # let ctx = egui::Context::default();
+/// let brand = egui::Color32::from_rgb(0x3B, 0x82, 0xF6);
+/// beau::set_theme(&ctx, beau::Theme::light().with_accent(brand));
+/// beau::set_theme(&ctx, beau::Theme::dark().with_accent(brand));
+/// ```
 pub fn set_theme(ctx: &Context, theme: Theme) {
-    let egui_theme = if theme.is_dark() {
-        egui::Theme::Dark
-    } else {
-        egui::Theme::Light
-    };
-    ctx.set_theme(egui_theme);
-    ctx.all_styles_mut(|style| theme.apply_to_style(style));
-    ctx.data_mut(|d| d.insert_temp(theme_id(), Arc::new(theme)));
+    let mode = theme.mode;
+    ctx.style_mut_of(egui_theme(mode), |style| theme.apply_to_style(style));
+    ctx.data_mut(|d| d.insert_temp(theme_id(mode), Arc::new(theme)));
+}
+
+/// Choose light, dark, or follow the OS ([`egui::ThemePreference::System`], the default).
+pub fn set_preference(ctx: &Context, preference: egui::ThemePreference) {
+    ctx.set_theme(preference);
+}
+
+/// The [`Mode`] currently in effect (resolving "follow the OS").
+pub fn mode(ctx: &Context) -> Mode {
+    match ctx.theme() {
+        egui::Theme::Light => Mode::Light,
+        egui::Theme::Dark => Mode::Dark,
+    }
 }
 
 /// Anything a theme can be read from.
@@ -225,7 +253,8 @@ impl ThemeSource for Ui {
     }
 }
 
-/// The installed [`Theme`] (Graphite light if none was installed).
+/// The [`Theme`] for the mode currently in effect (beau's defaults if none was
+/// installed for that mode).
 ///
 /// ```
 /// # egui::__run_test_ui(|ui| {
@@ -235,10 +264,11 @@ impl ThemeSource for Ui {
 /// ```
 pub fn theme(source: &(impl ThemeSource + ?Sized)) -> Arc<Theme> {
     let ctx = source.context();
-    if let Some(t) = ctx.data(|d| d.get_temp::<Arc<Theme>>(theme_id())) {
+    let mode = mode(ctx);
+    if let Some(t) = ctx.data(|d| d.get_temp::<Arc<Theme>>(theme_id(mode))) {
         return t;
     }
-    let t = Arc::new(Theme::light());
-    ctx.data_mut(|d| d.insert_temp(theme_id(), t.clone()));
+    let t = Arc::new(Theme::for_mode(mode));
+    ctx.data_mut(|d| d.insert_temp(theme_id(mode), t.clone()));
     t
 }

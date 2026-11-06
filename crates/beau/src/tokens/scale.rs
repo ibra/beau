@@ -68,9 +68,9 @@ pub struct TypeScale {
     pub display: TextSpec,
 }
 
-impl TypeScale {
-    /// The Graphite type scale.
-    pub fn graphite() -> Self {
+impl Default for TypeScale {
+    /// beau's type scale.
+    fn default() -> Self {
         let spec = |size, weight, line_height, tracking| TextSpec {
             size,
             weight,
@@ -87,7 +87,9 @@ impl TypeScale {
             display: spec(24.0, Weight::Display, 30.0, -0.5),
         }
     }
+}
 
+impl TypeScale {
     /// Look up the spec for a role.
     pub fn get(&self, role: TextRole) -> TextSpec {
         match role {
@@ -141,11 +143,11 @@ impl Default for Space {
 /// Corner radii, in points.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Radii {
-    /// 3: small chips, checkboxes, keycaps.
+    /// 4: checkboxes, keycaps, small marks.
     pub sm: u8,
-    /// 5: buttons, inputs.
+    /// 6: buttons, inputs.
     pub md: u8,
-    /// 8: cards, dialogs, popovers.
+    /// 10: cards, dialogs, popovers.
     pub lg: u8,
     /// Fully rounded (pills, avatars).
     pub full: u8,
@@ -154,9 +156,9 @@ pub struct Radii {
 impl Default for Radii {
     fn default() -> Self {
         Self {
-            sm: 3,
-            md: 5,
-            lg: 8,
+            sm: 4,
+            md: 6,
+            lg: 10,
             full: u8::MAX,
         }
     }
@@ -235,8 +237,8 @@ impl Elevation {
         }
     }
 
-    /// Graphite elevation. `strength` scales shadow alpha (dark mode needs more).
-    pub fn graphite(ink: Color32, strength: f32) -> Self {
+    /// beau's elevation, cast in `ink`. `strength` scales shadow alpha (dark mode needs more).
+    pub fn from_ink(ink: Color32, strength: f32) -> Self {
         let layer = |y: f32, blur: f32, spread: f32, alpha: f32| ShadowLayer {
             offset: vec2(0.0, y),
             blur,

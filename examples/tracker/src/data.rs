@@ -74,6 +74,24 @@ impl Filter {
         }
     }
 
+    pub fn empty_title(self) -> &'static str {
+        match self {
+            Self::MyIssues => "Nothing assigned to you",
+            Self::Active => "No active tasks",
+            Self::Backlog => "Backlog is clear",
+            Self::Done => "Nothing finished yet",
+        }
+    }
+
+    pub fn empty_hint(self) -> &'static str {
+        match self {
+            Self::MyIssues => "Tasks assigned to you will show up here.",
+            Self::Active => "Tasks you start or plan next will show up here.",
+            Self::Backlog => "Ideas you park for later will collect here.",
+            Self::Done => "Completed tasks will show up here.",
+        }
+    }
+
     pub fn matches(self, task: &Task) -> bool {
         match self {
             Self::MyIssues => task.assignee == Some("IH") && task.status != Status::Done,
@@ -229,7 +247,7 @@ pub fn seed_tasks() -> Vec<Task> {
         ),
         t(
             15,
-            "Graphite palette, light and dark",
+            "Light and dark palettes",
             S::Done,
             P::High,
             0,

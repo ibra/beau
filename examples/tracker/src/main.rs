@@ -1,6 +1,6 @@
 //! beau reference app: a small task tracker in the spirit of Linear.
 //!
-//! Native: `cargo run -p tracker [-- --dark] [--dialog] [--stock] [--screenshot out.png]`
+//! Native: `cargo run -p tracker [-- --dark] [--dialog] [--empty] [--stock] [--screenshot out.png]`
 //! Web:    `trunk serve` from this directory.
 
 mod app;
@@ -16,6 +16,8 @@ pub struct Options {
     pub dark: bool,
     /// Open the new-task dialog at startup.
     pub dialog: bool,
+    /// Start with no tasks (shows the empty state).
+    pub empty: bool,
     /// Don't install beau: render with stock egui for before/after comparisons.
     pub stock: bool,
     /// Save a screenshot to this path after startup, then exit.
@@ -31,6 +33,7 @@ fn main() -> eframe::Result {
         match arg.as_str() {
             "--dark" => opts.dark = true,
             "--dialog" => opts.dialog = true,
+            "--empty" => opts.empty = true,
             "--stock" => opts.stock = true,
             "--screenshot" => opts.screenshot = args.next().map(Into::into),
             other => eprintln!("tracker: ignoring unknown argument {other:?}"),

@@ -1,16 +1,14 @@
 # beau
 
-> **On AI use.** beau is built with substantial help from AI (Anthropic's
-> Claude), which writes much of the code. I've had a deep role throughout:
-> authoring and directing the work, making the design and engineering
-> decisions, reviewing what gets built, and setting the taste.
+> beau is Ibrahim Hisham's design system for egui: the visual language, the
+> architecture and the taste are his. Parts of the implementation were written
+> with AI assistance, under his direction and review.
 
 Beautiful UI for [egui](https://github.com/emilk/egui).
 
 beau gives native and web Rust apps a polished, recognizable look with very
-little effort. Its visual identity is **Graphite**: dense, precise and calm,
-built from ink, hairlines and quick, critically damped motion. Colour belongs
-to your app, not the library. See [`DESIGN.md`](DESIGN.md).
+little effort: dense, precise and calm, built from ink, hairlines and quick,
+critically damped motion. Colour belongs to your app, not the library. See [`DESIGN.md`](DESIGN.md).
 
 ![Tracker, light](docs/screenshots/m1-light.png)
 
@@ -31,9 +29,11 @@ hover, focus ring, selection and on-accent text are derived with WCAG
 contrast guarantees:
 
 ```rust
-let theme = beau::Theme::light().with_accent(egui::Color32::from_rgb(0x3B, 0x82, 0xF6));
-beau::install_with(&cc.egui_ctx, theme);
+beau::install_with_accent(&cc.egui_ctx, egui::Color32::from_rgb(0x3B, 0x82, 0xF6));
 ```
+
+Light and dark follow the OS. To force one, call
+`beau::set_preference(ctx, egui::ThemePreference::Dark)`.
 
 ## What's inside
 

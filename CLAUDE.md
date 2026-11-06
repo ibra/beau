@@ -1,6 +1,6 @@
 # beau
 
-beau is a Rust library that makes egui apps beautiful. It has its own visual identity, **Graphite**; see `DESIGN.md`, which is the visual source of truth. `examples/tracker` is the showcase and test bed: every component earns its place there first.
+beau is a Rust library that makes egui apps beautiful. It has its own visual identity; `DESIGN.md` is the visual source of truth. `examples/tracker` is the showcase and test bed: every component earns its place there first.
 
 ## Layering rules (non-negotiable)
 Modules are built bottom-up, and each may only depend on the layers above it in this list:
