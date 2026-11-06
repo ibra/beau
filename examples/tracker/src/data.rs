@@ -88,7 +88,7 @@ pub fn projects() -> Vec<Project> {
     vec![
         Project {
             name: "Beau Core",
-            color: Color32::from_rgb(0x9B, 0xC4, 0x1F),
+            color: Color32::from_rgb(0x3F, 0xA7, 0x96),
         },
         Project {
             name: "Docs site",

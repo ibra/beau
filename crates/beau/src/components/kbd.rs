@@ -1,4 +1,4 @@
-use egui::{CornerRadius, FontId, Response, Sense, Stroke, Ui, Widget, vec2};
+use egui::{CornerRadius, FontId, Response, Sense, Ui, Widget, vec2};
 
 use crate::{paint, theme, tokens::Weight, typography};
 
@@ -35,7 +35,7 @@ impl Widget for Kbd {
                 rect,
                 CornerRadius::same(t.radius.sm),
                 c.surface,
-                Stroke::new(1.0, c.border),
+                t.divider(ui.ctx()),
             ));
             p.galley(rect.center() - galley.size() / 2.0, galley, c.text_subtle);
         }

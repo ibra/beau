@@ -70,7 +70,7 @@ impl Card {
             rect,
             radius,
             self.fill.unwrap_or(t.colors.surface_raised),
-            t.hairline(),
+            t.divider(ui.ctx()),
         ));
         ui.painter().set(where_bg, Shape::Vec(shapes));
         inner

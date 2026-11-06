@@ -14,7 +14,7 @@ use crate::{
 /// Visual emphasis of a [`Button`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Variant {
-    /// The single most important action on screen (lime).
+    /// The single most important action on screen (accent fill; ink by default).
     Primary,
     /// A regular action.
     #[default]
@@ -162,7 +162,7 @@ impl Widget for Button {
         };
         let trailing_font = FontId::new(12.0, typography::family(Weight::Regular));
 
-        let painter = ui.painter().clone();
+        let mut painter = ui.painter().clone();
         let galley = painter.layout_no_wrap(self.text.clone(), font, Color32::PLACEHOLDER);
         let trailing = self
             .trailing
@@ -208,12 +208,19 @@ impl Widget for Button {
             t.motion.base,
         );
 
-        let ink = c.text_on_accent;
+        // A filled edge only where the fill is light enough to need one.
+        let edge = |fill: Color32| {
+            if crate::tokens::luminance(fill) < 0.18 {
+                fill
+            } else {
+                fill.lerp_to_gamma(Color32::BLACK, 0.16)
+            }
+        };
         let look = match self.variant {
             Variant::Primary => Look {
                 fill: c.accent,
                 fill_hover: c.accent_hover,
-                border: c.accent.lerp_to_gamma(ink, 0.18),
+                border: edge(c.accent),
                 text: c.text_on_accent,
                 trailing: c.text_on_accent.gamma_multiply(0.55),
                 gradient: true,
@@ -221,7 +228,7 @@ impl Widget for Button {
             Variant::Danger => Look {
                 fill: c.danger,
                 fill_hover: c.danger_hover,
-                border: c.danger.lerp_to_gamma(Color32::BLACK, 0.15),
+                border: edge(c.danger),
                 text: c.text_on_danger,
                 trailing: c.text_on_danger.gamma_multiply(0.7),
                 gradient: true,
@@ -259,6 +266,31 @@ impl Widget for Button {
             }
         };
 
+        // Disabled: a neutral, full-opacity look that reads as "unavailable",
+        // instead of egui's default fade.
+        let look = if enabled {
+            look
+        } else {
+            painter.multiply_opacity(1.0 / ui.visuals().disabled_alpha().max(0.01));
+            let filled = self.variant != Variant::Ghost;
+            Look {
+                fill: if filled {
+                    c.surface_raised.blend(c.surface_active)
+                } else {
+                    Color32::TRANSPARENT
+                },
+                fill_hover: if filled {
+                    c.surface_raised.blend(c.surface_active)
+                } else {
+                    Color32::TRANSPARENT
+                },
+                border: Color32::TRANSPARENT,
+                text: c.text_subtle,
+                trailing: c.text_subtle.gamma_multiply(0.7),
+                gradient: false,
+            }
+        };
+
         let radius = CornerRadius::same(t.radius.md);
         let fill = look.fill.lerp_to_gamma(look.fill_hover, hover);
         // Pressing sinks the button by one physical pixel and darkens it slightly.
@@ -269,7 +301,7 @@ impl Widget for Button {
         let mut shapes = Vec::with_capacity(4);
         shapes.push(paint::focus_ring(rect, radius, c.focus_ring, focus));
         if look.gradient {
-            let top = fill.lerp_to_gamma(Color32::WHITE, 0.12 * (1.0 - press));
+            let top = fill.lerp_to_gamma(Color32::WHITE, 0.08 * (1.0 - press));
             let gradient = LinearGradient::vertical(top, fill);
             shapes.push(paint::gradient_rect(ctx, body, radius, &gradient));
             shapes.push(paint::surface(

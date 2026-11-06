@@ -133,7 +133,10 @@ impl Widget for TextInput<'_> {
             // Hover-only: a click-sensing area on top would steal focus from the field.
             let frame_hit = ui.interact(rect, response.id.with("beau.frame"), egui::Sense::hover());
 
-            if self.autofocus && super::just_appeared(ui.ctx(), response.id) {
+            // Skip the invisible sizing pass of a new Area: a focus request
+            // made there is dropped, which made autofocus timing-dependent.
+            if self.autofocus && !ui.is_sizing_pass() && super::just_appeared(ui.ctx(), response.id)
+            {
                 response.request_focus();
             }
 

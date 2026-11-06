@@ -3,12 +3,12 @@
 Graphite is dense, precise and calm: a professional instrument, not a toy. It should be recognizable from a single screenshot. Every screenshot gets checked against this file.
 
 ## Signatures (what makes it *beau*)
-1. **Electric lime on graphite.** The accent `#C6F432` is a *fill* paired with near-black ink `#0B0C0E` in both modes. Lime is never used as text on light backgrounds; light mode uses `accent_text` (`#4D6B00`) instead. Text selection is a lime wash.
-2. **Hairline construction.** Structure comes from crisp, pixel-snapped 1px *inside* strokes and quiet tonal steps between `bg`, `surface` and `surface_raised`. Use dividers instead of boxes.
+1. **Ink, not colour.** The primary action is solid ink: `#0B0C0E` in light mode, `#EDEEF0` in dark. The library imposes no brand colour; colour belongs to the app, via `Theme::with_accent(color)`, which derives every accent token with contrast guarantees.
+2. **Hairline construction.** Structure comes from quiet tonal steps between `bg`, `surface` and `surface_raised`, plus fine lines. Dividers and surface outlines are exactly **one physical pixel** (`Theme::divider`). Control outlines (inputs, secondary buttons) are **1pt** (`Theme::control_border`), so they read as interactive. Use dividers instead of boxes, and spacing instead of dividers where possible.
 3. **Shadows only on things that float**: popovers, dialogs and menus. They are tight and layered (a contact shadow plus an ambient one), never a big fuzzy glow.
 4. **Small, consistent radii:** 3 / 5 / 8px, and nothing in between.
 5. **Density.** 13px base type, 28px controls (24 / 28 / 32), 32px rows.
-6. **Keyboard is first-class and visible.** Shortcuts appear as muted trailing hints (`New task  N`, `esc`). The focus ring is 2px with a 1px gap, so it reads on both lime and graphite. Text inputs are the exception: their border turns `focus_ring` and a soft 35% halo replaces the gap ring, which looks less heavy around large fields.
+6. **Keyboard is first-class and visible.** Shortcuts appear as muted trailing hints (`New task  N`, `esc`). The focus ring is 2px with a 1px gap, in `focus_ring` (ink by default). Text inputs are the exception: their border turns `focus_ring` and a soft 35% halo replaces the gap ring, which looks less heavy around large fields.
 7. **Motion is quick and critically damped**, about 120–200ms. Things fade and drift 4–6px; nothing bounces or flies.
 
 ## Tokens
@@ -28,14 +28,15 @@ Graphite is dense, precise and calm: a professional instrument, not a toy. It sh
 | `text` | `#0B0C0E` | `#EDEEF0` | primary text |
 | `text_muted` | `#5D6068` | `#9C9EA5` | secondary text |
 | `text_subtle` | `#8E9199` | `#686B73` | hints, IDs, placeholders |
-| `text_on_accent` | `#0B0C0E` | `#0B0C0E` | ink on lime |
-| `accent` | `#C6F432` | `#C6F432` | primary fill |
-| `accent_hover` | `#B9E826` | `#D3FB5A` | primary hover |
-| `accent_text` | `#4D6B00` | `#C6F432` | accent used as text or icon |
+| `accent` | `#0B0C0E` | `#EDEEF0` | primary fill (default: ink) |
+| `text_on_accent` | white | `#0B0C0E` | derived: whichever contrasts more |
+| `accent_hover` | derived | derived | one step lighter (dark accents) or darker |
+| `accent_text` | derived | derived | accent pushed towards `text` until ≥4.5:1 on `surface` |
 | `danger` | `#E5484D` | `#E5484D` | destructive fill |
 | `danger_hover` | `#D93D42` | `#F0585D` | |
 | `danger_text` | `#CE2C31` | `#FF6369` | destructive text |
-| `focus_ring` | `#6F9C00` | `#C6F432` | light uses darker lime for ≥3:1 contrast |
+| `focus_ring` | derived | derived | accent pushed towards `text` until ≥3:1 on `surface` |
+| `selection` | derived | derived | accent wash (18% light, 32% dark) |
 | `backdrop` | ink 28% | black 55% | dialog scrim |
 
 ### Type (Inter variable, Latin subset; weights 400 / 500 / 600)
@@ -78,9 +79,14 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - All state lives in egui temp memory and is garbage-collected two passes after it was last touched.
 
 ## Do / don't
+- **Don't** use outlined pills or chips for metadata. Use a small dot plus muted text.
+- **Don't** ship dead controls. A button that does nothing is removed until it works.
+- **Do** make disabled controls neutral (surface fill, subtle text, full opacity), not faded.
+- **Do** keep signals quiet: urgency is a tinted mark, not a solid red block.
+- **Do** separate groups with rhythm (space above a plain label), not bands or lines.
+- **Do** align metadata in fixed-width columns so it reads down the list.
 - **Do** use tonal steps and hairlines for structure. **Don't** box everything.
-- **Do** keep lime for the single most important action on screen. **Don't** use it as decoration.
-- **Don't** put lime text on light backgrounds.
+- **Do** keep the accent fill for the single most important action on screen. **Don't** use it as decoration.
 - **Don't** add shadows to inline content.
 - **Do** align numbers and IDs in muted `small` text.
 - **Don't** use radii outside the 3 / 5 / 8 scale.
