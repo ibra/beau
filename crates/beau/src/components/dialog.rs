@@ -226,3 +226,78 @@ impl<'o> Dialog<'o> {
         ui.add_space(t.space.xl);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Run one pass at `time`; returns whether egui wants another repaint soon.
+    fn pass(ctx: &Context, time: f64, f: impl FnMut(&mut Ui)) -> bool {
+        let input = egui::RawInput {
+            time: Some(time),
+            screen_rect: Some(Rect::from_min_size(pos2(0.0, 0.0), vec2(1000.0, 700.0))),
+            ..Default::default()
+        };
+        let mut out = ctx.run_ui(input, f);
+        out.textures_delta.clear();
+        out.viewport_output
+            .values()
+            .any(|v| v.repaint_delay < std::time::Duration::from_secs(1))
+    }
+
+    #[test]
+    fn animates_out_after_close_then_goes_idle() {
+        let ctx = Context::default();
+        crate::install(&ctx);
+        let mut open = true;
+        let mut time = 0.0;
+        let drawn = |ctx: &Context, open: &mut bool, time: f64| {
+            let mut shown = None;
+            let wants_repaint = pass(ctx, time, |ui| {
+                shown = Dialog::new("t")
+                    .title("Hi")
+                    .open(open)
+                    .show(ui.ctx(), |ui| ui.label("x"))
+                    .map(|r| r.presence);
+            });
+            (shown, wants_repaint)
+        };
+
+        // Open and settle.
+        for _ in 0..60 {
+            drawn(&ctx, &mut open, time);
+            time += 1.0 / 60.0;
+        }
+        let (p, wants_repaint) = drawn(&ctx, &mut open, time);
+        assert_eq!(p.unwrap().phase, motion::Phase::Present);
+        assert!(!wants_repaint, "a settled dialog must not keep repainting");
+
+        // Close: still drawn (exiting, non-interactive) for a while, then gone.
+        open = false;
+        time += 1.0 / 60.0;
+        let (p, wants_repaint) = drawn(&ctx, &mut open, time);
+        time += 1.0 / 60.0;
+        let (p2, _) = drawn(&ctx, &mut open, time);
+        let p2 = p2.expect("still drawn while exiting");
+        assert!(p.is_some() && wants_repaint);
+        assert_eq!(p2.phase, motion::Phase::Exiting);
+        assert!(!p2.is_interactive());
+        assert!(p2.t < 1.0);
+
+        let mut gone_after = None;
+        for i in 0..60 {
+            time += 1.0 / 60.0;
+            if drawn(&ctx, &mut open, time).0.is_none() {
+                gone_after = Some(i);
+                break;
+            }
+        }
+        let frames = gone_after.expect("dialog never finished closing");
+        assert!(frames > 3, "close should be animated, not instant");
+
+        // Fully closed: no further repaints requested.
+        time += 1.0;
+        let (_, wants_repaint) = drawn(&ctx, &mut open, time);
+        assert!(!wants_repaint, "idle app must not repaint");
+    }
+}
