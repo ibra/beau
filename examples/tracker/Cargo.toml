@@ -1,0 +1,25 @@
+[package]
+name = "tracker"
+description = "beau reference app: a small task tracker."
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+beau = { path = "../../crates/beau" }
+# The windowing/rendering host for egui on native and web.
+eframe = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# PNG encoding for `--screenshot`, used to review the look after every change.
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Standard eframe web bootstrap: run the async WebRunner and find the canvas.
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Window", "Document", "HtmlCanvasElement"] }
+
+[lints]
+workspace = true
