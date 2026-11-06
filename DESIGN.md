@@ -8,7 +8,7 @@ Graphite is dense, precise and calm: a professional instrument, not a toy. It sh
 3. **Shadows only on things that float**: popovers, dialogs and menus. They are tight and layered (a contact shadow plus an ambient one), never a big fuzzy glow.
 4. **Small, consistent radii:** 3 / 5 / 8px, and nothing in between.
 5. **Density.** 13px base type, 28px controls (24 / 28 / 32), 32px rows.
-6. **Keyboard is first-class and visible.** Shortcuts appear as muted trailing hints (`New task  N`, `esc`). The focus ring is 2px with a 1px gap, so it reads on both lime and graphite.
+6. **Keyboard is first-class and visible.** Shortcuts appear as muted trailing hints (`New task  N`, `esc`). The focus ring is 2px with a 1px gap, so it reads on both lime and graphite. Text inputs are the exception: their border turns `focus_ring` and a soft 35% halo replaces the gap ring, which looks less heavy around large fields.
 7. **Motion is quick and critically damped**, about 120–200ms. Things fade and drift 4–6px; nothing bounces or flies.
 
 ## Tokens
