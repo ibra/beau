@@ -1,10 +1,16 @@
 [package]
 name = "beau"
-description = "Beautiful UI foundations and components for egui."
+version = "0.1.0"
+description = "Design tokens, typography, motion and components that make egui apps look polished."
 edition.workspace = true
 license.workspace = true
-version.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/beau"
+readme = "../../README.md"
+keywords = ["egui", "gui", "ui", "design-system", "components"]
+categories = ["gui", "wasm"]
+include = ["src/**", "assets/**", "CHANGELOG.md", "LICENSE-*"]
 
 [dependencies]
 # The only dependency: beau is a layer on top of egui.

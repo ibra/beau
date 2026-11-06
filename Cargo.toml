@@ -5,8 +5,8 @@ members = ["crates/beau", "examples/tracker"]
 [workspace.package]
 edition = "2024"
 license = "MIT OR Apache-2.0"
-version = "0.1.0"
 rust-version = "1.95"
+repository = "https://github.com/ibra/beau"
 
 [workspace.dependencies]
 egui = { version = "0.37.0", default-features = false }

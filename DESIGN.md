@@ -1,8 +1,8 @@
-# beau design
+# Design
 
-beau is dense, precise and calm. It aims to look and feel right in anyone's app: true-neutral grays that sit next to any brand colour, ink as the default primary, quiet structure and quick motion. Every screenshot gets checked against this file.
+beau is dense, precise and calm. It aims to look and feel right in anyone's app: true-neutral grays that sit next to any brand colour, ink as the default primary, quiet structure and quick motion. Every visual change is reviewed against this document.
 
-## Signatures (what makes it *beau*)
+## Principles
 1. **Ink, not colour.** The primary action is solid ink: `#0C0C0C` in light mode, `#EDEDED` in dark. The library imposes no brand colour; colour belongs to the app, via `Theme::with_accent(color)`, which derives every accent token with contrast guarantees.
 2. **Hairline construction.** Structure comes from quiet tonal steps between `bg`, `surface` and `surface_raised`, plus fine lines. Dividers and surface outlines are exactly **one physical pixel** (`Theme::divider`). Control outlines (inputs, secondary buttons) are **1pt** (`Theme::control_border`), so they read as interactive. Use dividers instead of boxes, and spacing instead of dividers where possible.
 3. **Shadows only on things that float**: popovers, dialogs and menus. They are tight and layered (a contact shadow plus an ambient one), never a big fuzzy glow.
@@ -95,9 +95,10 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **Don't** use radii outside the 4 / 6 / 10 scale.
 - **Do** give empty views a quiet raised `Card` with a title, a one-line hint and one secondary action.
 
-## Customization (planned)
-beau stays opinionated: few knobs, each of which moves many tokens together so the result still looks designed.
-- **Accent** (done): `Theme::with_accent` / `beau::install_with_accent`.
-- **Roundness**: one scale factor for all radii.
-- **Density**: compact / default / comfortable, moving control heights, row heights and paddings together.
-- **Font**: swap Inter for another family while keeping the type scale.
+## Customization
+
+beau stays opinionated: few settings, each moving many tokens together so any
+combination still looks designed. The accent is configurable today
+(`Theme::with_accent`, `beau::install_with_accent`). Roundness, density and
+font choice are planned for
+[v0.4.0](https://github.com/ibra/beau/milestone/4) (#27, #28, #29).

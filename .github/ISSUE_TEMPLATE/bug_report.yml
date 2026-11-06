@@ -1,0 +1,39 @@
+name: Bug report
+description: Something renders or behaves incorrectly.
+labels: ["type: bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead. Screenshots help a lot for visual bugs.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A minimal code example or steps in the tracker app.
+      render: rust
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: beau version
+      placeholder: "0.1.0 or a commit hash"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options: [macOS, Windows, Linux, Web (WASM)]
+    validations:
+      required: true
+  - type: input
+    id: egui
+    attributes:
+      label: egui / eframe version
+      placeholder: "0.37.0"
