@@ -1,0 +1,14 @@
+[package]
+name = "beau"
+description = "Beautiful UI foundations and components for egui."
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# The only dependency: beau is a layer on top of egui.
+egui = { workspace = true }
+
+[lints]
+workspace = true
