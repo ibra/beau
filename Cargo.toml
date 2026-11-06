@@ -1,0 +1,19 @@
+[workspace]
+resolver = "3"
+members = ["crates/beau", "examples/tracker"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
+rust-version = "1.95"
+
+[workspace.dependencies]
+egui = { version = "0.37.0", default-features = false }
+eframe = { version = "0.37.0" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
