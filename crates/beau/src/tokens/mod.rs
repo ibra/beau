@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use egui::{Color32, Context, CornerRadius, Id, Margin, Stroke, TextStyle, Ui, vec2};
 
-pub use palette::Palette;
+pub use palette::{Palette, contrast, luminance};
 pub use scale::{
     Controls, Elevation, Level, MotionTokens, Radii, ShadowLayer, Space, TextRole, TextSpec,
     TypeScale, Weight,
@@ -81,14 +81,38 @@ impl Theme {
         }
     }
 
+    /// Use `accent` as the primary colour.
+    ///
+    /// beau's default accent is ink (monochrome). Pass your brand colour here
+    /// and every accent-derived token (hover, on-accent text, accent text, focus
+    /// ring, selection) is recomputed with WCAG contrast guarantees.
+    ///
+    /// ```
+    /// let theme = beau::Theme::light().with_accent(egui::Color32::from_rgb(0x3B, 0x82, 0xF6));
+    /// ```
+    pub fn with_accent(mut self, accent: Color32) -> Self {
+        self.colors.set_accent(accent);
+        self
+    }
+
     /// Whether this is a dark theme.
     pub fn is_dark(&self) -> bool {
         self.mode == Mode::Dark
     }
 
-    /// Hairline stroke in the [`Palette::border`] colour.
-    pub fn hairline(&self) -> Stroke {
-        Stroke::new(1.0, self.colors.border)
+    /// Divider and surface-outline stroke: exactly one physical pixel in
+    /// [`Palette::border`], so it stays fine on high-DPI screens.
+    pub fn divider(&self, ctx: &Context) -> Stroke {
+        Stroke::new(
+            crate::paint::hairline_width(ctx.pixels_per_point()),
+            self.colors.border,
+        )
+    }
+
+    /// Control outline stroke (inputs, secondary buttons): 1pt, so controls
+    /// read as interactive at any density.
+    pub fn control_border(&self) -> Stroke {
+        Stroke::new(1.0, self.colors.border_strong)
     }
 
     /// Write the tokens into an [`egui::Style`], so stock egui widgets

@@ -182,7 +182,7 @@ impl<'o> Dialog<'o> {
                     body,
                     radius,
                     c.surface_overlay,
-                    t.hairline(),
+                    t.divider(ui.ctx()),
                 ));
                 panel.painter().set(where_bg, Shape::Vec(shapes));
                 ui.ctx().data_mut(|d| d.insert_temp(size_id, body.height()));

@@ -156,13 +156,12 @@ impl TrackerApp {
                         {
                             self.new_task_open = true;
                         }
-                        ui.add(Button::new("Display").secondary());
                     });
                 });
             });
         let rect = ui.max_rect();
         let y = ui.cursor().top();
-        ui.painter().hline(rect.x_range(), y, t.hairline());
+        ui.painter().hline(rect.x_range(), y, t.divider(ui.ctx()));
     }
 
     fn task_list(&mut self, ui: &mut Ui) {
@@ -270,23 +269,19 @@ fn section_label(ui: &mut Ui, text: &str) {
 fn group_header(ui: &mut Ui, status: Status, count: usize) {
     let t = beau::theme(ui);
     let c = &t.colors;
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 36.0), Sense::hover());
+    // Plain label: structure from rhythm (space above), not from bands or lines.
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 44.0), Sense::hover());
     let p = ui.painter();
-    p.rect_filled(rect, 0.0, c.bg.gamma_multiply(0.6));
-    p.hline(rect.x_range(), rect.bottom() - 0.5, t.hairline());
+    let cy = rect.bottom() - 16.0;
     let mut x = rect.left() + 24.0;
-    glyphs::status(p, egui::pos2(x + 7.0, rect.center().y), status, &t);
-    x += 24.0;
+    glyphs::status(p, egui::pos2(x + 7.0, cy), status, &t);
+    x += 26.0;
     let label = p.layout_no_wrap(status.label().into(), t.font(TextRole::BodyStrong), c.text);
     let w = label.size().x;
-    p.galley(
-        egui::pos2(x, rect.center().y - label.size().y / 2.0),
-        label,
-        c.text,
-    );
+    p.galley(egui::pos2(x, cy - label.size().y / 2.0), label, c.text);
     let n = p.layout_no_wrap(count.to_string(), t.font(TextRole::Body), c.text_subtle);
     p.galley(
-        egui::pos2(x + w + 8.0, rect.center().y - n.size().y / 2.0),
+        egui::pos2(x + w + 8.0, cy - n.size().y / 2.0),
         n,
         c.text_subtle,
     );
@@ -309,10 +304,11 @@ fn task_row(ui: &mut Ui, task: &Task, project: &Project) {
     if hover > 0.0 {
         p.rect_filled(rect, 0.0, c.surface_hover.gamma_multiply(hover));
     }
+    let divider = t.divider(ui.ctx());
     p.hline(
-        rect.x_range(),
-        rect.bottom() - 0.5,
-        (1.0, c.border.gamma_multiply(0.6)),
+        (rect.left() + 24.0)..=(rect.right() - 24.0),
+        rect.bottom() - divider.width / 2.0,
+        (divider.width, c.border.gamma_multiply(0.7)),
     );
 
     let cy = rect.center().y;
@@ -330,29 +326,27 @@ fn task_row(ui: &mut Ui, task: &Task, project: &Project) {
     let mut right = rect.right() - 24.0;
     glyphs::avatar(p, egui::pos2(right - 10.0, cy), task.assignee, &t);
     right -= 20.0 + 16.0;
+    // Fixed-width columns so dates and projects align down the list.
+    let due_w = 52.0;
     if let Some(due) = task.due {
         let g = p.layout_no_wrap(due.into(), small.clone(), c.text_muted);
-        right -= g.size().x;
-        p.galley(egui::pos2(right, cy - g.size().y / 2.0), g, c.text_muted);
-        right -= 16.0;
+        p.galley(
+            egui::pos2(right - g.size().x, cy - g.size().y / 2.0),
+            g,
+            c.text_muted,
+        );
     }
-    let chip = p.layout_no_wrap(project.name.into(), small, c.text_muted);
-    let chip_w = chip.size().x + 8.0 + 6.0 + 16.0;
-    let chip_rect =
-        egui::Rect::from_center_size(egui::pos2(right - chip_w / 2.0, cy), vec2(chip_w, 22.0));
-    p.add(beau::paint::surface(
-        chip_rect,
-        egui::CornerRadius::same(t.radius.full),
-        egui::Color32::TRANSPARENT,
-        egui::Stroke::new(1.0, c.border),
-    ));
-    p.circle_filled(egui::pos2(chip_rect.left() + 10.0, cy), 3.0, project.color);
+    right -= due_w + 24.0;
+    let project_w = 96.0;
+    let px = right - project_w;
+    p.circle_filled(egui::pos2(px + 3.0, cy), 3.0, project.color);
+    let name = p.layout_no_wrap(project.name.into(), small, c.text_muted);
     p.galley(
-        egui::pos2(chip_rect.left() + 18.0, cy - chip.size().y / 2.0),
-        chip,
+        egui::pos2(px + 14.0, cy - name.size().y / 2.0),
+        name,
         c.text_muted,
     );
-    right = chip_rect.left() - 16.0;
+    right = px - 24.0;
 
     let title_color = if task.status == Status::Done {
         c.text_muted

@@ -15,7 +15,7 @@ pub fn logo(ui: &mut Ui) {
     let (rect, _) = ui.allocate_exact_size(vec2(20.0, 20.0), Sense::hover());
     let p = ui.painter();
     let gradient = beau::paint::LinearGradient::vertical(
-        t.colors.accent.lerp_to_gamma(Color32::WHITE, 0.15),
+        t.colors.accent.lerp_to_gamma(Color32::WHITE, 0.08),
         t.colors.accent,
     );
     p.add(beau::paint::gradient_rect(
@@ -81,14 +81,19 @@ pub fn priority(p: &Painter, c: Pos2, priority: Priority, t: &Theme) {
             }
         }
         Priority::Urgent => {
+            // Quiet: a tinted tile with a red mark, not a solid block.
             let rect = Rect::from_center_size(c, vec2(14.0, 14.0));
-            p.rect_filled(rect, CornerRadius::same(t.radius.sm), col.danger);
+            p.rect_filled(
+                rect,
+                CornerRadius::same(t.radius.sm),
+                col.danger.gamma_multiply(0.14),
+            );
             p.text(
                 c,
                 egui::Align2::CENTER_CENTER,
                 "!",
                 FontId::new(11.0, beau::typography::family(Weight::Semibold)),
-                col.text_on_danger,
+                col.danger_text,
             );
         }
         level => {
