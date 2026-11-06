@@ -38,6 +38,7 @@ pub enum Priority {
 pub struct Task {
     pub number: u32,
     pub title: String,
+    #[allow(dead_code)] // shown in the detail panel (milestone 3)
     pub description: String,
     pub status: Status,
     pub priority: Priority,
@@ -70,6 +71,15 @@ impl Filter {
             Self::Active => "Active",
             Self::Backlog => "Backlog",
             Self::Done => "Done",
+        }
+    }
+
+    pub fn matches(self, task: &Task) -> bool {
+        match self {
+            Self::MyIssues => task.assignee == Some("IH") && task.status != Status::Done,
+            Self::Active => matches!(task.status, Status::Todo | Status::InProgress),
+            Self::Backlog => task.status == Status::Backlog,
+            Self::Done => task.status == Status::Done,
         }
     }
 }

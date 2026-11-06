@@ -5,6 +5,7 @@
 
 mod app;
 mod data;
+mod glyphs;
 #[cfg(not(target_arch = "wasm32"))]
 mod screenshot;
 
