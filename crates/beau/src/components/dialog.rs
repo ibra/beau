@@ -251,7 +251,7 @@ mod tests {
         crate::install(&ctx);
         let mut open = true;
         let mut time = 0.0;
-        let mut drawn = |ctx: &Context, open: &mut bool, time: f64| {
+        let drawn = |ctx: &Context, open: &mut bool, time: f64| {
             let mut shown = None;
             let wants_repaint = pass(ctx, time, |ui| {
                 shown = Dialog::new("t")
