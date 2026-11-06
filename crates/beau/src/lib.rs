@@ -26,6 +26,7 @@ pub mod paint;
 pub mod tokens;
 pub mod typography;
 
+pub use components::{Button, Card, Dialog, Size, TextInput, Variant};
 pub use tokens::{Mode, Theme, set_theme, theme};
 
 /// Install beau on a context: fonts plus the Graphite light theme.
