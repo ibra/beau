@@ -1,15 +1,16 @@
-# beau design: Graphite
+# beau design
 
-Graphite is dense, precise and calm: a professional instrument, not a toy. It should be recognizable from a single screenshot. Every screenshot gets checked against this file.
+beau is dense, precise and calm. It aims to look and feel right in anyone's app: true-neutral grays that sit next to any brand colour, ink as the default primary, quiet structure and quick motion. Every screenshot gets checked against this file.
 
 ## Signatures (what makes it *beau*)
-1. **Ink, not colour.** The primary action is solid ink: `#0B0C0E` in light mode, `#EDEEF0` in dark. The library imposes no brand colour; colour belongs to the app, via `Theme::with_accent(color)`, which derives every accent token with contrast guarantees.
+1. **Ink, not colour.** The primary action is solid ink: `#0C0C0C` in light mode, `#EDEDED` in dark. The library imposes no brand colour; colour belongs to the app, via `Theme::with_accent(color)`, which derives every accent token with contrast guarantees.
 2. **Hairline construction.** Structure comes from quiet tonal steps between `bg`, `surface` and `surface_raised`, plus fine lines. Dividers and surface outlines are exactly **one physical pixel** (`Theme::divider`). Control outlines (inputs, secondary buttons) are **1pt** (`Theme::control_border`), so they read as interactive. Use dividers instead of boxes, and spacing instead of dividers where possible.
 3. **Shadows only on things that float**: popovers, dialogs and menus. They are tight and layered (a contact shadow plus an ambient one), never a big fuzzy glow.
-4. **Small, consistent radii:** 3 / 5 / 8px, and nothing in between.
-5. **Density.** 13px base type, 28px controls (24 / 28 / 32), 32px rows.
+4. **Consistent radii:** 4 / 6 / 10px. Crisp, but not severe.
+5. **Density.** 13px base type, 28px controls (24 / 28 / 32), 36px list rows. Digits are tabular everywhere, so numbers, IDs and dates align.
 6. **Keyboard is first-class and visible.** Shortcuts appear as muted trailing hints (`New task  N`, `esc`). The focus ring is 2px with a 1px gap, in `focus_ring` (ink by default). Text inputs are the exception: their border turns `focus_ring` and a soft 35% halo replaces the gap ring, which looks less heavy around large fields.
 7. **Motion is quick and critically damped**, about 120–200ms. Things fade and drift 4–6px; nothing bounces or flies.
+8. **Light and dark follow the OS** by default (`beau::install`). Apps can force a mode with `beau::set_preference`.
 
 ## Tokens
 
@@ -17,19 +18,19 @@ Graphite is dense, precise and calm: a professional instrument, not a toy. It sh
 
 | token | light | dark | use |
 |---|---|---|---|
-| `bg` | `#F3F3F4` | `#0B0C0E` | app canvas, sidebar |
-| `surface` | `#FBFBFB` | `#111215` | main content area |
-| `surface_raised` | `#FFFFFF` | `#17181C` | cards, inputs, secondary buttons |
-| `surface_overlay` | `#FFFFFF` | `#1B1C21` | dialogs, popovers |
+| `bg` | `#F4F4F4` | `#0C0C0C` | app canvas, sidebar |
+| `surface` | `#FBFBFB` | `#121212` | main content area |
+| `surface_raised` | `#FFFFFF` | `#181818` | cards, inputs, secondary buttons |
+| `surface_overlay` | `#FFFFFF` | `#1C1C1C` | dialogs, popovers |
 | `surface_hover` | ink 4.5% | white 5% | hover wash (translucent) |
 | `surface_active` | ink 8% | white 9% | pressed / selected wash |
-| `border` | `#E4E4E7` | `#25272C` | hairlines |
-| `border_strong` | `#D2D3D7` | `#33353B` | input / control outlines |
-| `text` | `#0B0C0E` | `#EDEEF0` | primary text |
-| `text_muted` | `#5D6068` | `#9C9EA5` | secondary text |
-| `text_subtle` | `#8E9199` | `#686B73` | hints, IDs, placeholders |
-| `accent` | `#0B0C0E` | `#EDEEF0` | primary fill (default: ink) |
-| `text_on_accent` | white | `#0B0C0E` | derived: whichever contrasts more |
+| `border` | `#E5E5E5` | `#262626` | hairlines |
+| `border_strong` | `#D6D6D6` | `#333333` | input / control outlines |
+| `text` | `#0C0C0C` | `#EDEDED` | primary text |
+| `text_muted` | `#616161` | `#A0A0A0` | secondary text |
+| `text_subtle` | `#8F8F8F` | `#6B6B6B` | hints, IDs, placeholders |
+| `accent` | `#0C0C0C` | `#EDEDED` | primary fill (default: ink) |
+| `text_on_accent` | white | `#0C0C0C` | derived: whichever contrasts more |
 | `accent_hover` | derived | derived | one step lighter (dark accents) or darker |
 | `accent_text` | derived | derived | accent pushed towards `text` until ≥4.5:1 on `surface` |
 | `danger` | `#E5484D` | `#E5484D` | destructive fill |
@@ -38,6 +39,8 @@ Graphite is dense, precise and calm: a professional instrument, not a toy. It sh
 | `focus_ring` | derived | derived | accent pushed towards `text` until ≥3:1 on `surface` |
 | `selection` | derived | derived | accent wash (18% light, 32% dark) |
 | `backdrop` | ink 28% | black 55% | dialog scrim |
+
+Neutrals are untinted grays, so they don't fight warm or cool accents.
 
 ### Type (Inter variable, Latin subset; weights 400 / 500 / 600)
 
@@ -51,12 +54,12 @@ Graphite is dense, precise and calm: a professional instrument, not a toy. It sh
 | heading | 18 / 24 | 600 (opsz 28) | −0.25 |
 | display | 24 / 30 | 600 (opsz 32) | −0.5 |
 
-Large sizes use Inter's *display* optical size, which gives tighter, sharper headings.
+Large sizes use Inter's *display* optical size, which gives tighter, sharper headings. Digits come from a 9 KB tabular-figures subset placed first in every font family (egui can't toggle OpenType `tnum`).
 
 ### Spacing, radii, controls
 - **Spacing:** xxs 2 · xs 4 · sm 6 · md 8 · lg 12 · xl 16 · xxl 24 · xxxl 32.
-- **Radii:** sm 3 · md 5 · lg 8 · full.
-- **Controls:** sm 24 · md 28 · lg 32. Row 32.
+- **Radii:** sm 4 · md 6 · lg 10 · full.
+- **Controls:** sm 24 · md 28 · lg 32. Row 36.
 
 ### Elevation (layered shadows)
 - **flat:** no shadow.
@@ -89,4 +92,12 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **Do** keep the accent fill for the single most important action on screen. **Don't** use it as decoration.
 - **Don't** add shadows to inline content.
 - **Do** align numbers and IDs in muted `small` text.
-- **Don't** use radii outside the 3 / 5 / 8 scale.
+- **Don't** use radii outside the 4 / 6 / 10 scale.
+- **Do** give empty views a quiet raised `Card` with a title, a one-line hint and one secondary action.
+
+## Customization (planned)
+beau stays opinionated: few knobs, each of which moves many tokens together so the result still looks designed.
+- **Accent** (done): `Theme::with_accent` / `beau::install_with_accent`.
+- **Roundness**: one scale factor for all radii.
+- **Density**: compact / default / comfortable, moving control heights, row heights and paddings together.
+- **Font**: swap Inter for another family while keeping the type scale.

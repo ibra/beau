@@ -1,7 +1,7 @@
 use eframe::egui::{self, Align, Key, Layout, Margin, Modifiers, Sense, Ui, vec2};
 
 use beau::tokens::TextRole;
-use beau::{Button, Dialog, Size, TextInput};
+use beau::{Button, Card, Dialog, Size, TextInput};
 
 use crate::Options;
 use crate::data::{self, Filter, Project, Status, Task};
@@ -11,7 +11,6 @@ pub struct TrackerApp {
     tasks: Vec<Task>,
     projects: Vec<Project>,
     filter: Filter,
-    dark: bool,
     stock: bool,
     new_task_open: bool,
     draft_title: String,
@@ -20,21 +19,16 @@ pub struct TrackerApp {
     screenshot: Option<crate::screenshot::ScreenshotJob>,
 }
 
-fn mode(dark: bool) -> beau::Mode {
-    if dark {
-        beau::Mode::Dark
-    } else {
-        beau::Mode::Light
-    }
-}
-
 impl TrackerApp {
     pub fn new(cc: &eframe::CreationContext<'_>, opts: Options) -> Self {
         let mut app = Self {
-            tasks: data::seed_tasks(),
+            tasks: if opts.empty {
+                Vec::new()
+            } else {
+                data::seed_tasks()
+            },
             projects: data::projects(),
             filter: Filter::Active,
-            dark: opts.dark,
             stock: opts.stock,
             new_task_open: opts.dialog,
             draft_title: String::new(),
@@ -42,24 +36,32 @@ impl TrackerApp {
             #[cfg(not(target_arch = "wasm32"))]
             screenshot: opts.screenshot.map(crate::screenshot::ScreenshotJob::new),
         };
+        let ctx = &cc.egui_ctx;
         if !app.stock {
-            beau::typography::install_fonts(&cc.egui_ctx);
+            beau::install(ctx);
         }
-        app.set_dark(&cc.egui_ctx, opts.dark);
+        // Follow the OS by default. Screenshots are deterministic: light unless --dark.
+        #[cfg(not(target_arch = "wasm32"))]
+        let fixed = opts.dark || app.screenshot.is_some();
+        #[cfg(target_arch = "wasm32")]
+        let fixed = opts.dark;
+        if fixed {
+            app.set_dark(ctx, opts.dark);
+        }
         app
     }
 
+    fn is_dark(ctx: &egui::Context) -> bool {
+        ctx.theme() == egui::Theme::Dark
+    }
+
     fn set_dark(&mut self, ctx: &egui::Context, dark: bool) {
-        self.dark = dark;
-        if self.stock {
-            ctx.set_theme(if dark {
-                egui::Theme::Dark
-            } else {
-                egui::Theme::Light
-            });
+        let pref = if dark {
+            egui::ThemePreference::Dark
         } else {
-            beau::set_theme(ctx, beau::Theme::for_mode(mode(dark)));
-        }
+            egui::ThemePreference::Light
+        };
+        beau::set_preference(ctx, pref);
     }
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
@@ -70,7 +72,7 @@ impl TrackerApp {
             self.new_task_open = true;
         }
         if ctx.input_mut(|i| i.consume_key(Modifiers::SHIFT, Key::D)) {
-            self.set_dark(ctx, !self.dark);
+            self.set_dark(ctx, !Self::is_dark(ctx));
         }
     }
 
@@ -113,7 +115,8 @@ impl TrackerApp {
         }
 
         ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
-            let label = if self.dark { "Light mode" } else { "Dark mode" };
+            let dark = Self::is_dark(ui.ctx());
+            let label = if dark { "Light mode" } else { "Dark mode" };
             if ui
                 .add(
                     Button::new(label)
@@ -124,8 +127,7 @@ impl TrackerApp {
                 )
                 .clicked()
             {
-                let dark = !self.dark;
-                self.set_dark(ui.ctx(), dark);
+                self.set_dark(ui.ctx(), !dark);
             }
         });
     }
@@ -166,6 +168,10 @@ impl TrackerApp {
 
     fn task_list(&mut self, ui: &mut Ui) {
         let t = beau::theme(ui);
+        if !self.tasks.iter().any(|task| self.filter.matches(task)) {
+            self.empty_state(ui);
+            return;
+        }
         egui::ScrollArea::vertical()
             .auto_shrink(false)
             .show(ui, |ui| {
@@ -186,6 +192,33 @@ impl TrackerApp {
                 }
                 ui.add_space(t.space.xxl);
             });
+    }
+
+    /// Shown when the current filter matches nothing.
+    fn empty_state(&mut self, ui: &mut Ui) {
+        let t = beau::theme(ui);
+        let width = 360.0_f32.min(ui.available_width() - 2.0 * t.space.xxl);
+        ui.add_space(t.space.xxxl * 2.0);
+        ui.vertical_centered(|ui| {
+            ui.set_max_width(width);
+            Card::new()
+                .padding(Margin::same(t.space.xxl as i8))
+                .show(ui, |ui| {
+                    ui.set_width(width - 2.0 * t.space.xxl);
+                    ui.spacing_mut().item_spacing.y = t.space.xs;
+                    ui.vertical(|ui| {
+                        ui.label(t.text(self.filter.empty_title(), TextRole::Title));
+                        ui.label(
+                            t.text(self.filter.empty_hint(), TextRole::Body)
+                                .color(t.colors.text_muted),
+                        );
+                        ui.add_space(t.space.lg);
+                        if ui.add(Button::new("New task").trailing("N")).clicked() {
+                            self.new_task_open = true;
+                        }
+                    });
+                });
+        });
     }
 
     // ----------------------------------------------------------------- dialog
@@ -324,8 +357,8 @@ fn task_row(ui: &mut Ui, task: &Task, project: &Project) {
 
     // Right side, laid out right-to-left.
     let mut right = rect.right() - 24.0;
-    glyphs::avatar(p, egui::pos2(right - 10.0, cy), task.assignee, &t);
-    right -= 20.0 + 16.0;
+    glyphs::avatar(p, egui::pos2(right - 11.0, cy), task.assignee, &t);
+    right -= 22.0 + 16.0;
     // Fixed-width columns so dates and projects align down the list.
     let due_w = 52.0;
     if let Some(due) = task.due {

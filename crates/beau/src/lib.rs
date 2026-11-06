@@ -1,6 +1,6 @@
 //! # beau: beautiful UI for egui
 //!
-//! beau gives egui apps a polished, recognizable look ("Graphite") with very
+//! beau gives egui apps a polished, recognizable look with very
 //! little effort. Call [`install`] once, then use the [`components`].
 //!
 //! ```no_run
@@ -27,17 +27,28 @@ pub mod tokens;
 pub mod typography;
 
 pub use components::{Button, Card, Dialog, Size, TextInput, Variant};
-pub use tokens::{Mode, Theme, set_theme, theme};
+pub use tokens::{Mode, Theme, mode, set_preference, set_theme, theme};
 
-/// Install beau on a context: fonts plus the Graphite light theme.
+/// Install beau on a context: fonts, plus the light and dark themes.
 ///
-/// Call once at startup, e.g. in your `eframe` app's constructor.
+/// The active theme follows the OS light/dark setting; override it with
+/// [`set_preference`]. Call once at startup, e.g. in your `eframe` app's
+/// constructor.
 pub fn install(ctx: &egui::Context) {
-    install_with(ctx, Theme::light());
+    typography::install_fonts(ctx);
+    set_theme(ctx, Theme::light());
+    set_theme(ctx, Theme::dark());
 }
 
-/// Install beau with a specific theme.
-pub fn install_with(ctx: &egui::Context, theme: Theme) {
+/// Install beau with the same accent colour in light and dark mode.
+///
+/// ```no_run
+/// # fn setup(ctx: &egui::Context) {
+/// beau::install_with_accent(ctx, egui::Color32::from_rgb(0x3B, 0x82, 0xF6));
+/// # }
+/// ```
+pub fn install_with_accent(ctx: &egui::Context, accent: egui::Color32) {
     typography::install_fonts(ctx);
-    set_theme(ctx, theme);
+    set_theme(ctx, Theme::light().with_accent(accent));
+    set_theme(ctx, Theme::dark().with_accent(accent));
 }

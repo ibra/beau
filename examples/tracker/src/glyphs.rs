@@ -5,7 +5,7 @@ use eframe::egui::{
 };
 
 use beau::Theme;
-use beau::tokens::{TextRole, Weight};
+use beau::tokens::Weight;
 
 use crate::data::{Priority, Status};
 
@@ -52,8 +52,10 @@ pub fn status(p: &Painter, c: Pos2, status: Status, t: &Theme) {
             p.circle_stroke(c, r, Stroke::new(1.5, col.text_muted));
         }
         Status::InProgress => {
-            let ring = col.accent_text;
-            p.circle_stroke(c, r, Stroke::new(1.5, ring));
+            // Same muted ring as Todo; only the half-fill carries ink, so the
+            // shape says "in progress" without outweighing the other statuses.
+            p.circle_stroke(c, r, Stroke::new(1.5, col.text_muted));
+            let ring = col.text;
             let inner = r - 2.5;
             let mut pts = vec![c];
             for i in 0..=16 {
@@ -117,19 +119,17 @@ pub fn priority(p: &Painter, c: Pos2, priority: Priority, t: &Theme) {
     }
 }
 
-/// Assignee avatar (20px) or an empty dashed slot.
+/// Assignee avatar (22px) or an empty slot.
 pub fn avatar(p: &Painter, c: Pos2, initials: Option<&str>, t: &Theme) {
     let col = &t.colors;
     match initials {
         Some(text) => {
-            p.circle_filled(c, 10.0, col.surface_active);
-            p.circle_stroke(c, 10.0, Stroke::new(1.0, col.border));
-            let mut font = t.font(TextRole::Caption);
-            font.size = 9.5;
+            p.circle_filled(c, 11.0, col.surface_active);
+            let font = FontId::new(10.5, beau::typography::family(Weight::Semibold));
             p.text(c, egui::Align2::CENTER_CENTER, text, font, col.text_muted);
         }
         None => {
-            p.circle_stroke(c, 9.5, Stroke::new(1.0, col.border_strong));
+            p.circle_stroke(c, 10.5, Stroke::new(1.0, col.border_strong));
         }
     }
 }

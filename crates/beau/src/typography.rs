@@ -14,6 +14,11 @@
 //!
 //! Each [`Weight`] is a separate egui font family that points at the same font
 //! bytes with different variation coordinates (`wght`, `opsz`).
+//!
+//! **Tabular figures.** beau uses fixed-width digits everywhere so counts,
+//! IDs and dates align. egui can't switch OpenType features, so
+//! `InterTabularDigits.ttf` (9 KB, built by `assets/fonts/tools/tabular_digits.py`)
+//! holds Inter's `tnum` digits as default glyphs and sits first in every family.
 
 use std::sync::Arc;
 
@@ -24,6 +29,9 @@ use crate::tokens::{TextRole, TextSpec, Theme, Weight};
 
 /// Inter variable font bytes (Latin subset).
 pub static INTER_VARIABLE: &[u8] = include_bytes!("../assets/fonts/InterVariable.ttf");
+
+/// Inter's tabular digits only (see the module docs).
+pub static INTER_TABULAR_DIGITS: &[u8] = include_bytes!("../assets/fonts/InterTabularDigits.ttf");
 
 /// The egui font family name for a weight.
 pub fn family_name(weight: Weight) -> &'static str {
@@ -55,6 +63,7 @@ fn coords(weight: Weight) -> VariationCoords {
 /// Anything Inter lacks (emoji, CJK) falls back to the fonts already in `base`.
 pub fn font_definitions(mut base: FontDefinitions) -> FontDefinitions {
     let blob: egui::epaint::text::Blob = Arc::new(INTER_VARIABLE);
+    let digits: egui::epaint::text::Blob = Arc::new(INTER_TABULAR_DIGITS);
     let fallbacks: Vec<String> = base
         .families
         .get(&FontFamily::Proportional)
@@ -68,22 +77,26 @@ pub fn font_definitions(mut base: FontDefinitions) -> FontDefinitions {
         Weight::Display,
     ] {
         let name = family_name(weight).to_owned();
-        let data = FontData::from_blob(blob.clone(), 0).tweak(FontTweak {
+        let tweak = FontTweak {
             coords: coords(weight),
             ..Default::default()
-        });
+        };
+        let data = FontData::from_blob(blob.clone(), 0).tweak(tweak.clone());
         base.font_data.insert(name.clone(), Arc::new(data));
-        let mut chain = vec![name];
+        let digits_name = format!("{name}-tnum");
+        let digits_data = FontData::from_blob(digits.clone(), 0).tweak(tweak);
+        base.font_data
+            .insert(digits_name.clone(), Arc::new(digits_data));
+        let mut chain = vec![digits_name, name];
         chain.extend(fallbacks.iter().cloned());
         base.families.insert(family(weight), chain);
     }
 
     let regular = family_name(Weight::Regular).to_owned();
     for fam in [FontFamily::Proportional, FontFamily::Monospace] {
-        base.families
-            .entry(fam)
-            .or_default()
-            .insert(0, regular.clone());
+        let chain = base.families.entry(fam).or_default();
+        chain.insert(0, regular.clone());
+        chain.insert(0, format!("{regular}-tnum"));
     }
     base
 }

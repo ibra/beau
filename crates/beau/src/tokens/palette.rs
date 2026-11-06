@@ -59,29 +59,29 @@ pub struct Palette {
     pub selection: Color32,
 }
 
-const INK: Color32 = Color32::from_rgb(0x0B, 0x0C, 0x0E);
-const PAPER: Color32 = Color32::from_rgb(0xED, 0xEE, 0xF0);
+const INK: Color32 = Color32::from_rgb(0x0C, 0x0C, 0x0C);
+const PAPER: Color32 = Color32::from_rgb(0xED, 0xED, 0xED);
 
 impl Palette {
-    /// Graphite light, with an ink accent.
+    /// Light palette, with an ink accent.
     pub fn light() -> Self {
         let mut p = Self {
-            bg: Color32::from_rgb(0xF3, 0xF3, 0xF4),
+            bg: Color32::from_rgb(0xF4, 0xF4, 0xF4),
             surface: Color32::from_rgb(0xFB, 0xFB, 0xFB),
             surface_raised: Color32::WHITE,
             surface_overlay: Color32::WHITE,
-            surface_hover: Color32::from_rgba_unmultiplied(0x0B, 0x0C, 0x0E, 12),
-            surface_active: Color32::from_rgba_unmultiplied(0x0B, 0x0C, 0x0E, 20),
-            border: Color32::from_rgb(0xE4, 0xE4, 0xE7),
-            border_strong: Color32::from_rgb(0xD6, 0xD7, 0xDB),
+            surface_hover: Color32::from_rgba_unmultiplied(0x0C, 0x0C, 0x0C, 12),
+            surface_active: Color32::from_rgba_unmultiplied(0x0C, 0x0C, 0x0C, 20),
+            border: Color32::from_rgb(0xE5, 0xE5, 0xE5),
+            border_strong: Color32::from_rgb(0xD6, 0xD6, 0xD6),
             text: INK,
-            text_muted: Color32::from_rgb(0x5D, 0x60, 0x68),
-            text_subtle: Color32::from_rgb(0x8E, 0x91, 0x99),
+            text_muted: Color32::from_rgb(0x61, 0x61, 0x61),
+            text_subtle: Color32::from_rgb(0x8F, 0x8F, 0x8F),
             danger: Color32::from_rgb(0xE5, 0x48, 0x4D),
             danger_hover: Color32::from_rgb(0xD9, 0x3D, 0x42),
             danger_text: Color32::from_rgb(0xCE, 0x2C, 0x31),
             text_on_danger: Color32::WHITE,
-            backdrop: Color32::from_rgba_unmultiplied(0x0B, 0x0C, 0x0E, 72),
+            backdrop: Color32::from_rgba_unmultiplied(0x0C, 0x0C, 0x0C, 72),
             // Accent-derived; filled in by `set_accent`.
             text_on_accent: Color32::WHITE,
             accent: INK,
@@ -94,20 +94,20 @@ impl Palette {
         p
     }
 
-    /// Graphite dark, with an ink (near-white) accent.
+    /// Dark palette, with an ink (near-white) accent.
     pub fn dark() -> Self {
         let mut p = Self {
             bg: INK,
-            surface: Color32::from_rgb(0x11, 0x12, 0x15),
-            surface_raised: Color32::from_rgb(0x17, 0x18, 0x1C),
-            surface_overlay: Color32::from_rgb(0x1B, 0x1C, 0x21),
+            surface: Color32::from_rgb(0x12, 0x12, 0x12),
+            surface_raised: Color32::from_rgb(0x18, 0x18, 0x18),
+            surface_overlay: Color32::from_rgb(0x1C, 0x1C, 0x1C),
             surface_hover: Color32::from_rgba_unmultiplied(0xFF, 0xFF, 0xFF, 13),
             surface_active: Color32::from_rgba_unmultiplied(0xFF, 0xFF, 0xFF, 23),
-            border: Color32::from_rgb(0x25, 0x27, 0x2C),
-            border_strong: Color32::from_rgb(0x33, 0x35, 0x3B),
+            border: Color32::from_rgb(0x26, 0x26, 0x26),
+            border_strong: Color32::from_rgb(0x33, 0x33, 0x33),
             text: PAPER,
-            text_muted: Color32::from_rgb(0x9C, 0x9E, 0xA5),
-            text_subtle: Color32::from_rgb(0x68, 0x6B, 0x73),
+            text_muted: Color32::from_rgb(0xA0, 0xA0, 0xA0),
+            text_subtle: Color32::from_rgb(0x6B, 0x6B, 0x6B),
             danger: Color32::from_rgb(0xE5, 0x48, 0x4D),
             danger_hover: Color32::from_rgb(0xF0, 0x58, 0x5D),
             danger_text: Color32::from_rgb(0xFF, 0x63, 0x69),
