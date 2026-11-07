@@ -50,7 +50,7 @@ cargo clippy --workspace --all-targets --target wasm32-unknown-unknown -- -D war
 cargo test -p beau
 UPDATE_SNAPSHOTS=1 cargo test -p beau --test snapshots   # after an intended visual change
 RUSTDOCFLAGS="-D warnings" cargo doc -p beau --no-deps
-cargo run -p tracker -- --screenshot out.png [--dark] [--dialog] [--empty]
+cargo run -p tracker -- --screenshot out.png [--dark] [--dialog] [--empty] [--stock] [--no-beau]
 (cd examples/tracker && trunk build --release)
 ```
 

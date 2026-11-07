@@ -34,7 +34,7 @@ The tracker can render a screenshot and exit, which is the easiest way to
 review visual changes:
 
 ```sh
-cargo run -p tracker -- --screenshot out.png [--dark] [--dialog] [--empty]
+cargo run -p tracker -- --screenshot out.png [--dark] [--dialog] [--empty] [--stock] [--no-beau]
 ```
 
 ## Checks

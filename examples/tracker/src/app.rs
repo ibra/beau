@@ -11,7 +11,8 @@ pub struct TrackerApp {
     tasks: Vec<Task>,
     projects: Vec<Project>,
     filter: Filter,
-    stock: bool,
+    /// The `--stock` page, shown instead of the tracker.
+    stock: Option<crate::stock::StockPage>,
     new_task_open: bool,
     draft_title: String,
     draft_description: String,
@@ -29,7 +30,7 @@ impl TrackerApp {
             },
             projects: data::projects(),
             filter: Filter::Active,
-            stock: opts.stock,
+            stock: None,
             new_task_open: opts.dialog,
             draft_title: String::new(),
             draft_description: String::new(),
@@ -37,8 +38,15 @@ impl TrackerApp {
             screenshot: opts.screenshot.map(crate::screenshot::ScreenshotJob::new),
         };
         let ctx = &cc.egui_ctx;
-        if !app.stock {
+        if !opts.no_beau {
             beau::install(ctx);
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        let demo = app.screenshot.is_some();
+        #[cfg(target_arch = "wasm32")]
+        let demo = false;
+        if opts.stock || opts.no_beau {
+            app.stock = Some(crate::stock::StockPage::new(!opts.no_beau, demo));
         }
         // Follow the OS by default. Screenshots are deterministic: light unless --dark.
         #[cfg(not(target_arch = "wasm32"))]
@@ -398,6 +406,18 @@ fn task_row(ui: &mut Ui, task: &Task, project: &Project) {
 }
 
 impl eframe::App for TrackerApp {
+    /// For `--stock` screenshots, park the pointer over the activity list so
+    /// its (floating) scroll bar shows.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn raw_input_hook(&mut self, _ctx: &egui::Context, raw_input: &mut egui::RawInput) {
+        if self.screenshot.is_none() {
+            return;
+        }
+        if let Some(pos) = self.stock.as_ref().and_then(|p| p.hover_target) {
+            raw_input.events.push(egui::Event::PointerMoved(pos));
+        }
+    }
+
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.shortcuts(ctx);
         #[cfg(not(target_arch = "wasm32"))]
@@ -407,8 +427,8 @@ impl eframe::App for TrackerApp {
     }
 
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
-        if self.stock {
-            self.stock_ui(ui);
+        if let Some(page) = &mut self.stock {
+            page.ui(ui);
             return;
         }
         let t = beau::theme(ui);
@@ -430,59 +450,5 @@ impl eframe::App for TrackerApp {
             });
         let ctx = ui.ctx().clone();
         self.new_task_dialog(&ctx);
-    }
-}
-
-impl TrackerApp {
-    /// The same screen with stock egui widgets, for before/after comparisons.
-    fn stock_ui(&mut self, ui: &mut Ui) {
-        egui::Panel::left("sidebar")
-            .exact_size(240.0)
-            .show(ui, |ui| {
-                ui.heading("Beau Labs");
-                for f in Filter::ALL {
-                    if ui.selectable_label(self.filter == f, f.label()).clicked() {
-                        self.filter = f;
-                    }
-                }
-                ui.separator();
-                for p in &self.projects {
-                    ui.horizontal(|ui| {
-                        ui.colored_label(p.color, "●");
-                        ui.label(p.name);
-                    });
-                }
-            });
-        egui::CentralPanel::default().show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading(self.filter.label());
-                if ui.button("New task").clicked() {
-                    self.new_task_open = true;
-                }
-            });
-            ui.separator();
-            for task in self.tasks.iter().filter(|task| self.filter.matches(task)) {
-                ui.horizontal(|ui| {
-                    ui.label(format!("BEA-{}", task.number));
-                    ui.label(&task.title);
-                });
-            }
-        });
-        let mut open = self.new_task_open;
-        egui::Window::new("New task")
-            .open(&mut open)
-            .collapsible(false)
-            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-            .show(ui.ctx(), |ui| {
-                ui.label("Title");
-                ui.text_edit_singleline(&mut self.draft_title);
-                ui.label("Description");
-                ui.text_edit_multiline(&mut self.draft_description);
-                ui.horizontal(|ui| {
-                    let _ = ui.button("Cancel");
-                    let _ = ui.button("Create");
-                });
-            });
-        self.new_task_open = open;
     }
 }

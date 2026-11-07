@@ -13,8 +13,10 @@ categories = ["gui", "wasm"]
 include = ["src/**", "assets/**", "CHANGELOG.md", "LICENSE-*"]
 
 [dependencies]
-# The only dependency: beau is a layer on top of egui.
-egui = { workspace = true }
+# The only dependency: beau is a layer on top of egui. `experimental` exposes
+# egui's StyleProvider API, which beau uses to draw stock egui widgets
+# (src/stock.rs). It only adds API, and the workspace pins egui 0.37.
+egui = { workspace = true, features = ["experimental"] }
 
 [dev-dependencies]
 # Test-only: renders components headlessly and compares them against

@@ -95,6 +95,39 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **Don't** use radii outside the 4 / 6 / 10 scale.
 - **Do** give empty views a quiet raised `Card` with a title, a one-line hint and one secondary action.
 
+## Stock egui widgets
+
+`beau::install` restyles egui's own widgets, so apps can adopt beau
+gradually. `Theme::apply_to_style` maps tokens onto egui's `Style`, and
+`beau::stock::StockStyle` (an egui `StyleProvider`) draws the widgets egui
+lets a theme fully style. Everything comes from the theme's tokens.
+
+- **Buttons, drag values and combo boxes** are secondary controls:
+  `surface_raised`, a 1pt `border_strong` outline, the raised contact
+  shadow, hover and press washes, 500-weight labels (400 for value fields).
+  Selected buttons take `surface_active`.
+- **Menu and list rows** inside popups are ghost rows, 24pt tall, with a
+  `surface_hover` wash at `radius.sm`, inset from the popup edge.
+- **Text edits** match `TextInput`: the border darkens on hover, then turns
+  `focus_ring` with a 35% halo when focused. Keyboard-focused buttons and
+  checkboxes use the same halo.
+- **Checkboxes** are 14pt at `radius.sm` with an ink check. **Radios and
+  slider rails** are a soft gray (`surface_raised` plus the active wash) that
+  turns white under the pointer, so rails show on raised surfaces.
+- **Separators** are physical-pixel hairlines. **Scroll bars** float: 2pt,
+  growing to 6pt under the pointer, ink at low alpha, no track, hidden at
+  rest.
+- **Menus and tooltips** use `surface_overlay` with the widest overlay
+  shadow layer; windows use the widest modal layer.
+- `beau::paint::select_chevrons` gives a `ComboBox` beau's up/down chevrons
+  (pass it to `ComboBox::icon`).
+
+Limits, until beau has its own component: stock widgets change state
+instantly (egui gives a style provider no widget id to animate); a checked
+checkbox keeps a white box; the slider knob is 80% of the control height
+with an ink outline; disabled stock widgets fade instead of turning neutral;
+floating surfaces get one shadow layer, not beau's layered elevation.
+
 ## Customization
 
 beau stays opinionated: few settings, each moving many tokens together so any
