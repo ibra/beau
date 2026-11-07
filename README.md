@@ -1,8 +1,9 @@
 # beau
 
-> beau is Ibrahim Hisham's design system for egui: the visual language, the
-> architecture and the taste are his. Parts of the implementation were written
-> with AI assistance, under his direction and review.
+> [!NOTE]
+> **AI-assisted development.** Some code in this repository is drafted with LLM
+> tools. The architecture and design are set by the maintainer, and no change
+> reaches `main` without being read, tested and approved by hand.
 
 [![CI](https://github.com/ibra/beau/actions/workflows/ci.yml/badge.svg)](https://github.com/ibra/beau/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
