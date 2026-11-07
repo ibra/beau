@@ -168,17 +168,20 @@ impl Theme {
         let hover = c.surface_raised.blend(c.surface_hover);
         let press = c.surface_raised.blend(c.surface_active);
         let w = &mut v.widgets;
-        // `bg_fill` is the inside of checkboxes, radios and slider handles;
-        // `weak_bg_fill` the frame of buttons, combo boxes and drag values.
-        // `fg_stroke` is text, check marks, radio dots and handle outlines.
-        for (wv, fill, fg) in [
-            (&mut w.inactive, c.surface_raised, c.text),
-            (&mut w.hovered, hover, c.text),
-            (&mut w.active, press, c.text),
-            (&mut w.open, press, c.text),
+        // Most stock widgets are drawn by `crate::stock::StockStyle`; these
+        // slots style the rest. `bg_fill` is the inside of radios and slider
+        // handles and, when inactive, the slider rail: a soft gray, so the
+        // rail shows on raised surfaces, turning white under the pointer.
+        // `weak_bg_fill` frames buttons when no StockStyle is registered.
+        // `fg_stroke` is radio labels and dots and slider handle outlines.
+        for (wv, fill, weak, fg) in [
+            (&mut w.inactive, press, c.surface_raised, c.text),
+            (&mut w.hovered, c.surface_raised, hover, c.text),
+            (&mut w.active, c.surface_raised, press, c.text),
+            (&mut w.open, c.surface_raised, press, c.text),
         ] {
             wv.bg_fill = fill;
-            wv.weak_bg_fill = fill;
+            wv.weak_bg_fill = weak;
             wv.bg_stroke = stroke(c.border_strong);
             wv.fg_stroke = stroke(fg);
             wv.corner_radius = r(self.radius.md);
