@@ -49,6 +49,28 @@ cargo test -p beau
 RUSTDOCFLAGS="-D warnings" cargo doc -p beau --no-deps
 ```
 
+## Snapshot tests
+
+`crates/beau/tests/snapshots.rs` renders every component in light and dark
+mode and compares the result with the PNGs committed in
+`crates/beau/tests/snapshots/`. It runs as part of `cargo test -p beau` and
+needs a GPU or a software renderer (CI installs Mesa's lavapipe).
+
+- **A test fails** when the rendering changes. It writes `<name>.new.png`
+  (the new rendering) and `<name>.diff.png` (changed pixels) next to the
+  committed image. In CI, these are uploaded as the `snapshot-diffs` artifact.
+- **If the change is intended**, update the images and review them like code:
+
+  ```sh
+  UPDATE_SNAPSHOTS=1 cargo test -p beau --test snapshots
+  git diff --stat crates/beau/tests/snapshots
+  ```
+
+  Commit the updated PNGs with the change that caused them, and mention them
+  in the PR.
+- **New components** get a test in the same file: one scene, rendered in both
+  modes through `snapshot_both`.
+
 ## Pull requests
 
 1. Branch from `main`. `main` is protected: changes land through pull requests
