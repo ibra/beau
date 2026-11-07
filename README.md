@@ -34,6 +34,10 @@ designed together.
   rows animate out after you stop drawing them. Nothing repaints while idle.
 - **Components.** `Button`, `TextInput`, `Card`, `Dialog` and `Kbd`, with more
   on the [roadmap](https://github.com/ibra/beau/milestones).
+- **Stock widgets too.** `beau::install` restyles egui's own buttons,
+  checkboxes, radios, sliders, combo boxes, drag values, text edits, menus,
+  tooltips and scroll bars, so existing egui code looks at home next to beau
+  components.
 - **Native and web.** Everything builds for desktop and WebAssembly.
 
 ## Installation
@@ -84,6 +88,22 @@ cd examples/tracker && trunk serve        # web
 | Light | Dark |
 | --- | --- |
 | ![Dialog, light](docs/screenshots/m1-light-dialog.png) | ![Empty state, dark](docs/screenshots/empty-dark.png) |
+
+## Stock egui vs beau
+
+The same settings page of stock egui widgets, rendered without and with
+`beau::install`. The cards, the primary button and the description field are
+beau components; without beau they fall back to their egui equivalents.
+
+```sh
+cargo run -p tracker -- --no-beau   # plain egui
+cargo run -p tracker -- --stock     # with beau
+```
+
+| | Stock egui | With beau |
+| --- | --- | --- |
+| Light | ![Stock egui, light](docs/screenshots/compare-stock-light.png) | ![beau, light](docs/screenshots/compare-beau-light.png) |
+| Dark | ![Stock egui, dark](docs/screenshots/compare-stock-dark.png) | ![beau, dark](docs/screenshots/compare-beau-dark.png) |
 
 ## Design
 

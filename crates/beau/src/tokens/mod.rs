@@ -115,17 +115,15 @@ impl Theme {
         Stroke::new(1.0, self.colors.border_strong)
     }
 
-    /// Write the tokens into an [`egui::Style`], so stock egui widgets
-    /// (buttons, checkboxes, radios, sliders, combo boxes, drag values, text
-    /// edits, scroll bars, tooltips, menus and windows) match beau.
+    /// Write the tokens into an [`egui::Style`]: colours, spacing, sizes,
+    /// text styles, scroll bars, and the popup and window frames.
     ///
-    /// egui's style has one slot per widget state, shared by every widget, so
-    /// a few details can't follow beau exactly. A checked checkbox keeps the
-    /// raised fill (only the check mark is ink), and floating surfaces get a
-    /// single shadow layer instead of beau's layered elevation. Disabled stock
-    /// widgets use egui's faded look rather than beau's neutral one. Pass
-    /// [`crate::paint::select_chevrons`] to `ComboBox::icon` for beau's
-    /// chevrons.
+    /// This styles every stock egui widget. Buttons, text edits, checkboxes
+    /// and separators are then drawn in full by `beau::stock::StockStyle`,
+    /// which [`crate::install`] registers; radios, sliders, scroll bars,
+    /// tooltips and windows keep egui's geometry in beau's colours. Floating
+    /// surfaces get a single shadow layer instead of beau's layered
+    /// elevation, and disabled stock widgets use egui's faded look.
     pub fn apply_to_style(&self, style: &mut egui::Style) {
         let c = &self.colors;
         let r = |v: u8| CornerRadius::same(v);
