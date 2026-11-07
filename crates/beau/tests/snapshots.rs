@@ -11,7 +11,7 @@
 
 use beau::{Button, Card, Dialog, Size, TextInput, components::Kbd, tokens::TextRole};
 use egui::{Color32, Theme, Ui, Vec2, vec2};
-use egui_kittest::{Harness, SnapshotResults, kittest::Queryable};
+use egui_kittest::{Harness, SnapshotOptions, SnapshotResults, kittest::Queryable};
 
 /// beau clamps `dt` to 1/30s, so step at that rate for motion to advance.
 const STEP_DT: f32 = 1.0 / 30.0;
@@ -19,6 +19,8 @@ const STEP_DT: f32 = 1.0 / 30.0;
 const MAX_STEPS: u64 = 120;
 /// Render at 2x, so physical-pixel hairlines differ from 1pt strokes.
 const PIXELS_PER_POINT: f32 = 2.0;
+/// Per-pixel tolerance for scenes with large soft shadows (see [`dialog`]).
+const DIALOG_THRESHOLD: f32 = 5.0;
 
 /// Build a harness that draws `scene` on the `surface` colour with `xl`
 /// padding. `size: None` fits the viewport to the scene.
@@ -64,6 +66,17 @@ fn snapshot_both(
     scene: impl FnMut(&mut Ui) + Clone,
     interact: impl Fn(&mut Harness<'_>),
 ) {
+    snapshot_both_with(name, size, &SnapshotOptions::default(), scene, interact);
+}
+
+/// [`snapshot_both`] with explicit comparison options.
+fn snapshot_both_with(
+    name: &str,
+    size: Option<Vec2>,
+    options: &SnapshotOptions,
+    scene: impl FnMut(&mut Ui) + Clone,
+    interact: impl Fn(&mut Harness<'_>),
+) {
     // kittest requires the results of several harnesses in one test to be
     // merged, so a light failure still reports (or updates) dark too.
     let mut results = SnapshotResults::new();
@@ -72,7 +85,7 @@ fn snapshot_both(
         h.step();
         interact(&mut h);
         h.run();
-        h.snapshot(format!("{name}-{}", suffix(theme)));
+        h.snapshot_options(format!("{name}-{}", suffix(theme)), options);
         results.extend_harness(&mut h);
     }
     results.unwrap();
@@ -193,11 +206,16 @@ fn kbd() {
 
 #[test]
 fn dialog() {
-    snapshot_both(
+    snapshot_both_with(
         // A fixed viewport: the dialog is an Area centred on the screen,
         // which fitting to contents can't see.
         "dialog",
         Some(vec2(560.0, 340.0)),
+        // The layered modal shadow's soft edges rasterize a few levels apart
+        // on different GPUs (macOS Metal vs lavapipe in CI: ~1.7k pixels
+        // over the default threshold, none over 5). Content changes are far
+        // above this.
+        &SnapshotOptions::new().threshold(DIALOG_THRESHOLD),
         |ui| {
             ui.label("Content behind the backdrop");
             let mut open = true;
