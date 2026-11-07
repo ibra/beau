@@ -2,3 +2,7 @@ target/
 dist/
 *.png
 !docs/screenshots/*.png
+!crates/beau/tests/snapshots/*.png
+# Snapshot test output on failure (see CONTRIBUTING.md › Snapshot tests)
+*.new.png
+*.diff.png

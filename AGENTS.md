@@ -48,6 +48,7 @@ cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo clippy --workspace --all-targets --target wasm32-unknown-unknown -- -D warnings
 cargo test -p beau
+UPDATE_SNAPSHOTS=1 cargo test -p beau --test snapshots   # after an intended visual change
 RUSTDOCFLAGS="-D warnings" cargo doc -p beau --no-deps
 cargo run -p tracker -- --screenshot out.png [--dark] [--dialog] [--empty]
 (cd examples/tracker && trunk build --release)
@@ -62,6 +63,8 @@ cargo run -p tracker -- --screenshot out.png [--dark] [--dialog] [--empty]
 - For any visual change, render light and dark screenshots with
   `--screenshot`, review them against `DESIGN.md`, and include them in the PR.
   Call out anything that is merely acceptable rather than well designed.
+- Visual changes also update the component snapshots
+  (`crates/beau/tests/snapshots/`); new components add a snapshot test.
 - Taste and product decisions belong to the maintainer. When a change involves
   one, propose options and ask rather than choosing silently.
 

@@ -55,7 +55,19 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      # Software Vulkan (lavapipe), so the snapshot tests can render headless.
+      - name: Install software renderer
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers
       - run: cargo test -p beau
+      - name: Upload snapshot diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-diffs
+          path: |
+            crates/beau/tests/snapshots/*.new.png
+            crates/beau/tests/snapshots/*.diff.png
+          if-no-files-found: ignore
       - run: cargo doc -p beau --no-deps
         env:
           RUSTDOCFLAGS: -D warnings

@@ -16,5 +16,11 @@ include = ["src/**", "assets/**", "CHANGELOG.md", "LICENSE-*"]
 # The only dependency: beau is a layer on top of egui.
 egui = { workspace = true }
 
+[dev-dependencies]
+# Test-only: renders components headlessly and compares them against
+# committed PNG snapshots (#19). Not part of the published library's
+# dependency tree.
+egui_kittest = { version = "0.37.0", features = ["snapshot", "wgpu"] }
+
 [lints]
 workspace = true
