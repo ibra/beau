@@ -1,6 +1,6 @@
 //! beau reference app: a small task tracker in the spirit of Linear.
 //!
-//! Native: `cargo run -p tracker [-- --dark] [--dialog] [--empty] [--stock] [--screenshot out.png]`
+//! Native: `cargo run -p tracker [-- --dark] [--dialog] [--empty] [--stock [--no-beau]] [--screenshot out.png]`
 //! Web:    `trunk serve` from this directory.
 
 mod app;
@@ -8,6 +8,7 @@ mod data;
 mod glyphs;
 #[cfg(not(target_arch = "wasm32"))]
 mod screenshot;
+mod stock;
 
 /// Startup options (parsed from the command line on native).
 #[derive(Clone, Debug, Default)]
@@ -18,8 +19,11 @@ pub struct Options {
     pub dialog: bool,
     /// Start with no tasks (shows the empty state).
     pub empty: bool,
-    /// Don't install beau: render with stock egui for before/after comparisons.
+    /// Show the stock-widgets page: stock egui widgets next to beau components.
     pub stock: bool,
+    /// Don't install beau (implies `stock`): the same page in plain egui, for
+    /// before/after comparisons.
+    pub no_beau: bool,
     /// Save a screenshot to this path after startup, then exit.
     #[cfg(not(target_arch = "wasm32"))]
     pub screenshot: Option<std::path::PathBuf>,
@@ -35,15 +39,22 @@ fn main() -> eframe::Result {
             "--dialog" => opts.dialog = true,
             "--empty" => opts.empty = true,
             "--stock" => opts.stock = true,
+            "--no-beau" => opts.no_beau = true,
             "--screenshot" => opts.screenshot = args.next().map(Into::into),
             other => eprintln!("tracker: ignoring unknown argument {other:?}"),
         }
     }
 
+    opts.stock |= opts.no_beau;
+    let size = if opts.stock {
+        [920.0, 720.0]
+    } else {
+        [1180.0, 740.0]
+    };
     let native_options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_title("beau · tracker")
-            .with_inner_size([1180.0, 740.0])
+            .with_inner_size(size)
             .with_min_inner_size([720.0, 480.0]),
         ..Default::default()
     };
