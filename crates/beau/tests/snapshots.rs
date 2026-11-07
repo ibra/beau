@@ -10,7 +10,7 @@
 //! diff in git. See CONTRIBUTING.md › Snapshot tests.
 
 use beau::{Button, Card, Dialog, Size, TextInput, components::Kbd, tokens::TextRole};
-use egui::{Color32, Theme, Ui, Vec2, vec2};
+use egui::{Color32, Theme, Ui, Vec2, accesskit::Role, vec2};
 use egui_kittest::{Harness, SnapshotOptions, SnapshotResults, kittest::Queryable};
 
 /// beau clamps `dt` to 1/30s, so step at that rate for motion to advance.
@@ -231,5 +231,132 @@ fn dialog() {
                 });
         },
         |_| {},
+    );
+}
+
+#[test]
+fn stock_controls() {
+    snapshot_both(
+        "stock_controls",
+        None,
+        |ui| {
+            let (mut on, mut off, mut view, mut pts, mut lead) = (true, false, 0, 3, 15.0);
+            let mut name = String::from("Weekly planning");
+            ui.checkbox(&mut on, "Checked");
+            ui.checkbox(&mut off, "Unchecked");
+            ui.horizontal(|ui| {
+                ui.radio_value(&mut view, 0, "List");
+                ui.radio_value(&mut view, 1, "Board");
+            });
+            ui.add(
+                egui::Slider::new(&mut lead, 0.0..=60.0)
+                    .fixed_decimals(0)
+                    .text("Slider"),
+            );
+            ui.horizontal(|ui| {
+                egui::ComboBox::from_label("Combo")
+                    .selected_text("Medium")
+                    .icon(beau::paint::select_chevrons)
+                    .show_ui(ui, |_| {});
+                let label = ui.label("Drag");
+                ui.add(egui::DragValue::new(&mut pts).suffix(" pts"))
+                    .labelled_by(label.id);
+            });
+            ui.horizontal(|ui| {
+                let label = ui.label("Name");
+                ui.text_edit_singleline(&mut name).labelled_by(label.id);
+            });
+            ui.horizontal(|ui| {
+                let _ = ui.button("Button");
+                let _ = ui.selectable_label(true, "Selected");
+                let _ = ui.selectable_label(false, "Unselected");
+                let _ = ui.small_button("Small");
+            });
+            ui.separator();
+            ui.horizontal(|ui| {
+                ui.add_enabled(false, egui::Checkbox::new(&mut on, "Disabled"));
+                ui.add_enabled(false, egui::Button::new("Disabled"));
+            });
+        },
+        |_| {},
+    );
+}
+
+#[test]
+fn stock_states() {
+    snapshot_both(
+        "stock_states",
+        None,
+        |ui| {
+            let mut a = String::from("Weekly planning");
+            let mut b = String::from("Beau Core");
+            let mut on = true;
+            for (label, text) in [("Focused", &mut a), ("Hovered", &mut b)] {
+                ui.horizontal(|ui| {
+                    let label = ui.label(label);
+                    ui.text_edit_singleline(text).labelled_by(label.id);
+                });
+            }
+            ui.horizontal(|ui| {
+                let _ = ui.button("Hovered button");
+                ui.checkbox(&mut on, "Checkbox");
+            });
+        },
+        |h| {
+            // One focus per scene: the button's is in `stock_button_focus`.
+            h.get_by_role_and_label(Role::TextInput, "Focused").focus();
+            h.get_by_label("Hovered button").hover();
+        },
+    );
+}
+
+#[test]
+fn stock_button_focus() {
+    snapshot_both(
+        "stock_button_focus",
+        None,
+        |ui| {
+            ui.horizontal(|ui| {
+                let _ = ui.button("Focused button");
+                let mut on = true;
+                ui.checkbox(&mut on, "Checkbox");
+            });
+        },
+        |h| h.get_by_label("Focused button").focus(),
+    );
+}
+
+#[test]
+fn stock_popups() {
+    snapshot_both_with(
+        // A fixed viewport: popups are Areas, which fitting can't see.
+        "stock_popups",
+        Some(vec2(360.0, 220.0)),
+        // Soft shadows, like the dialog.
+        &SnapshotOptions::new().threshold(DIALOG_THRESHOLD),
+        |ui| {
+            ui.horizontal(|ui| {
+                let menu = ui.menu_button("Actions", |ui| {
+                    let _ = ui.button("Duplicate");
+                    let _ = ui.button("Export…");
+                    ui.separator();
+                    let _ = ui.button("Archive");
+                });
+                if ui.ctx().cumulative_pass_nr() == 0 {
+                    egui::Popup::open_id(
+                        ui.ctx(),
+                        egui::Popup::default_response_id(&menu.response),
+                    );
+                }
+                ui.add_space(96.0);
+                let reset = ui.button("Reset");
+                egui::Tooltip::for_widget(&reset).show(|ui| ui.label("Restore defaults"));
+            });
+        },
+        |h| {
+            // The menu opens on the next pass; then hover one of its rows.
+            h.step();
+            h.get_by_label("Export…").hover();
+        },
     );
 }
