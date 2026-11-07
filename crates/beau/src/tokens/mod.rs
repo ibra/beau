@@ -198,7 +198,10 @@ impl Theme {
         s.button_padding = vec2(self.space.lg, self.space.xs);
         s.interact_size.y = self.controls.md;
         s.window_margin = Margin::same(self.space.xl as i8);
-        s.menu_margin = Margin::same(self.space.xs as i8);
+        // Shared by menus and tooltips: menu rows add their own padding.
+        s.menu_margin = Margin::symmetric(self.space.sm as i8, self.space.xs as i8);
+        s.menu_width = self.controls.md * 7.0;
+        s.tooltip_width = self.controls.md * 10.0;
         // Checkboxes and radios: half a control. egui caps the box radius at
         // 30% of this, which lands on `radius.sm`.
         s.icon_width = self.controls.md / 2.0;
@@ -334,11 +337,39 @@ impl ThemeSource for Ui {
 /// ```
 pub fn theme(source: &(impl ThemeSource + ?Sized)) -> Arc<Theme> {
     let ctx = source.context();
-    let mode = mode(ctx);
+    theme_for_mode(ctx, mode(ctx))
+}
+
+/// The installed [`Theme`] for `mode` (beau's defaults if none was installed).
+pub(crate) fn theme_for_mode(ctx: &Context, mode: Mode) -> Arc<Theme> {
     if let Some(t) = ctx.data(|d| d.get_temp::<Arc<Theme>>(theme_id(mode))) {
         return t;
     }
     let t = Arc::new(Theme::for_mode(mode));
     ctx.data_mut(|d| d.insert_temp(theme_id(mode), t.clone()));
     t
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Customised tokens reach egui's style, so stock widgets follow them.
+    #[test]
+    fn apply_to_style_uses_tokens() {
+        let mut theme = Theme::light().with_accent(Color32::from_rgb(0x3B, 0x82, 0xF6));
+        theme.radius.md = 8;
+        theme.controls.md = 32.0;
+        let mut style = egui::Style::default();
+        theme.apply_to_style(&mut style);
+        let w = &style.visuals.widgets;
+        assert_eq!(w.inactive.corner_radius, CornerRadius::same(8));
+        assert_eq!(style.spacing.interact_size.y, 32.0);
+        assert_eq!(style.spacing.icon_width, 16.0);
+        assert_eq!(style.visuals.selection.bg_fill, theme.colors.selection);
+        assert_eq!(
+            style.visuals.selection.stroke.color,
+            theme.colors.focus_ring
+        );
+    }
 }
