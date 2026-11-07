@@ -116,10 +116,20 @@ impl Theme {
     }
 
     /// Write the tokens into an [`egui::Style`], so stock egui widgets
-    /// (labels, scroll bars, selections) match beau.
+    /// (buttons, checkboxes, radios, sliders, combo boxes, drag values, text
+    /// edits, scroll bars, tooltips, menus and windows) match beau.
+    ///
+    /// egui's style has one slot per widget state, shared by every widget, so
+    /// a few details can't follow beau exactly. A checked checkbox keeps the
+    /// raised fill (only the check mark is ink), and floating surfaces get a
+    /// single shadow layer instead of beau's layered elevation. Disabled stock
+    /// widgets use egui's faded look rather than beau's neutral one. Pass
+    /// [`crate::paint::select_chevrons`] to `ComboBox::icon` for beau's
+    /// chevrons.
     pub fn apply_to_style(&self, style: &mut egui::Style) {
         let c = &self.colors;
         let r = |v: u8| CornerRadius::same(v);
+        let stroke = |color: Color32| Stroke::new(1.0, color);
 
         let mut v = if self.is_dark() {
             egui::Visuals::dark()
@@ -133,46 +143,91 @@ impl Theme {
         v.extreme_bg_color = c.surface_raised;
         v.text_edit_bg_color = Some(c.surface_raised);
         v.code_bg_color = c.surface_hover;
+        v.warn_fg_color = c.text;
         v.error_fg_color = c.danger_text;
         v.panel_fill = c.surface;
         v.window_fill = c.surface_overlay;
-        v.window_stroke = Stroke::new(1.0, c.border);
+        v.window_stroke = stroke(c.border);
         v.window_corner_radius = r(self.radius.lg);
-        v.menu_corner_radius = r(self.radius.lg);
-        v.window_shadow = egui::Shadow::NONE;
-        v.popup_shadow = egui::Shadow::NONE;
+        v.menu_corner_radius = r(self.radius.md);
+        v.window_shadow = egui_shadow(&self.elevation.modal);
+        v.popup_shadow = egui_shadow(&self.elevation.overlay);
         v.selection.bg_fill = c.selection;
-        v.selection.stroke = Stroke::new(1.0, c.text);
+        // Also the focused text-edit border, so it follows the focus ring.
+        v.selection.stroke = stroke(c.focus_ring);
         v.text_cursor.stroke = Stroke::new(1.5, c.text);
         v.window_highlight_topmost = false;
+        v.collapsing_header_frame = false;
+        v.indent_has_left_vline = false;
+        v.striped = false;
+        v.handle_shape = egui::style::HandleShape::Circle;
+        v.slider_trailing_fill = true;
+        v.interact_cursor = None;
 
+        // Opaque, so slider rails and handles don't show through each other.
+        let hover = c.surface_raised.blend(c.surface_hover);
+        let press = c.surface_raised.blend(c.surface_active);
         let w = &mut v.widgets;
-        for (wv, fill, stroke) in [
-            (&mut w.noninteractive, c.surface, c.border),
-            (&mut w.inactive, c.surface_raised, c.border_strong),
-            (&mut w.hovered, c.surface_raised, c.border_strong),
-            (&mut w.active, c.surface_raised, c.border_strong),
-            (&mut w.open, c.surface_raised, c.border_strong),
+        // `bg_fill` is the inside of checkboxes, radios and slider handles;
+        // `weak_bg_fill` the frame of buttons, combo boxes and drag values.
+        // `fg_stroke` is text, check marks, radio dots and handle outlines.
+        for (wv, fill, fg) in [
+            (&mut w.inactive, c.surface_raised, c.text),
+            (&mut w.hovered, hover, c.text),
+            (&mut w.active, press, c.text),
+            (&mut w.open, press, c.text),
         ] {
             wv.bg_fill = fill;
             wv.weak_bg_fill = fill;
-            wv.bg_stroke = Stroke::new(1.0, stroke);
+            wv.bg_stroke = stroke(c.border_strong);
+            wv.fg_stroke = stroke(fg);
             wv.corner_radius = r(self.radius.md);
-            wv.fg_stroke = Stroke::new(1.0, c.text);
             wv.expansion = 0.0;
         }
-        w.noninteractive.fg_stroke = Stroke::new(1.0, c.text);
-        w.inactive.fg_stroke = Stroke::new(1.0, c.text_muted);
+        w.noninteractive.bg_fill = c.surface;
+        w.noninteractive.weak_bg_fill = c.surface;
+        // Separators and grid lines.
+        w.noninteractive.bg_stroke = stroke(c.border);
+        w.noninteractive.fg_stroke = stroke(c.text);
+        w.noninteractive.corner_radius = r(self.radius.md);
+        w.noninteractive.expansion = 0.0;
         style.visuals = v;
 
         let s = &mut style.spacing;
-        s.item_spacing = vec2(self.space.md, self.space.sm);
+        s.item_spacing = vec2(self.space.md, self.space.xs);
         s.button_padding = vec2(self.space.lg, self.space.xs);
         s.interact_size.y = self.controls.md;
         s.window_margin = Margin::same(self.space.xl as i8);
         s.menu_margin = Margin::same(self.space.xs as i8);
-        s.scroll.bar_width = 6.0;
-        s.scroll.floating_width = 2.0;
+        // Checkboxes and radios: half a control. egui caps the box radius at
+        // 30% of this, which lands on `radius.sm`.
+        s.icon_width = self.controls.md / 2.0;
+        s.icon_width_inner = self.space.md;
+        s.icon_spacing = self.space.md;
+        s.slider_rail_height = self.space.xs;
+        // Default widths, in control heights so density changes carry over.
+        s.slider_width = self.controls.md * 6.0;
+        s.combo_width = self.controls.md * 6.0;
+        s.text_edit_width = self.controls.md * 8.0;
+        s.indent = self.space.xl;
+        s.scroll = egui::style::ScrollStyle {
+            floating: true,
+            bar_width: self.space.sm,
+            floating_width: self.space.xxs,
+            floating_allocated_width: 0.0,
+            handle_min_length: self.controls.md,
+            bar_inner_margin: self.space.xs,
+            bar_outer_margin: self.space.xxs,
+            // Ink handle, no track.
+            foreground_color: true,
+            dormant_background_opacity: 0.0,
+            active_background_opacity: 0.0,
+            interact_background_opacity: 0.0,
+            dormant_handle_opacity: 0.0,
+            active_handle_opacity: 0.25,
+            interact_handle_opacity: 0.45,
+            ..egui::style::ScrollStyle::floating()
+        };
 
         style.text_styles = [
             (TextStyle::Small, TextRole::Small),
@@ -186,6 +241,21 @@ impl Theme {
         .collect();
 
         style.interaction.selectable_labels = false;
+    }
+}
+
+/// egui draws one shadow per surface: use the widest of beau's layers, which
+/// carries most of the elevation. egui can't shrink a shadow, so a negative
+/// spread is dropped.
+fn egui_shadow(layers: &[ShadowLayer]) -> egui::Shadow {
+    let Some(l) = layers.last() else {
+        return egui::Shadow::NONE;
+    };
+    egui::Shadow {
+        offset: [l.offset.x as i8, l.offset.y as i8],
+        blur: l.blur as u8,
+        spread: l.spread.max(0.0) as u8,
+        color: l.color,
     }
 }
 
