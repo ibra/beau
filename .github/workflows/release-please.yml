@@ -14,7 +14,7 @@ jobs:
     steps:
       # Uses RELEASE_PLEASE_TOKEN when set, so CI runs on release PRs
       # (events created with the default GITHUB_TOKEN don't trigger workflows).
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: release-please-config.json
