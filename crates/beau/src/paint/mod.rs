@@ -13,7 +13,9 @@ mod shadow;
 
 pub use border::{hairline_width, snap_rect, surface};
 pub use chevrons::select_chevrons;
-pub use focus::{FOCUS_GAP, FOCUS_WIDTH, focus_ring};
+pub use focus::{
+    FOCUS_GAP, FOCUS_HALO_ALPHA, FOCUS_HALO_WIDTH, FOCUS_WIDTH, focus_halo, focus_ring,
+};
 pub use gradient::{LinearGradient, gradient_rect};
 pub use icon::ICON_STROKE;
 pub(crate) use icon::{PathCmd, stroke_path};

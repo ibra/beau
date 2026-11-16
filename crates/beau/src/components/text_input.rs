@@ -152,7 +152,7 @@ impl Widget for TextInput<'_> {
             ui.painter().set(
                 where_bg,
                 Shape::Vec(vec![
-                    paint::focus_ring(rect, radius, c.focus_ring.gamma_multiply(0.35), focus),
+                    paint::focus_halo(rect, radius, c.focus_ring, focus),
                     paint::surface(rect, radius, c.surface_raised, Stroke::new(1.0, border)),
                 ]),
             );

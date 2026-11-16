@@ -97,6 +97,9 @@ impl TrackerApp {
         ui.spacing_mut().item_spacing.y = 1.0;
 
         ui.horizontal(|ui| {
+            // Ghost rows pad their labels by `space.lg`; the logo shares that
+            // left edge, so the whole sidebar reads down one axis.
+            ui.add_space(t.space.lg);
             glyphs::logo(ui);
             ui.add_space(2.0);
             ui.label(t.text("Beau Labs", TextRole::BodyStrong));
@@ -111,12 +114,14 @@ impl TrackerApp {
                 Filter::Backlog => icons::CIRCLE_DASHED,
                 Filter::Done => icons::CIRCLE_CHECK,
             };
-            let b = Button::new(f.label())
+            let mut b = Button::new(f.label())
                 .icon(icon)
                 .ghost()
                 .full_width()
-                .selected(self.filter == f)
-                .trailing(count.to_string());
+                .selected(self.filter == f);
+            if count > 0 {
+                b = b.trailing(count.to_string());
+            }
             if ui.add(b).clicked() {
                 self.filter = f;
             }
@@ -126,13 +131,11 @@ impl TrackerApp {
         section_label(ui, "Projects");
         for (i, p) in self.projects.iter().enumerate() {
             let count = self.tasks.iter().filter(|task| task.project == i).count();
-            ui.add(
-                Button::new(p.name)
-                    .ghost()
-                    .full_width()
-                    .dot(p.color)
-                    .trailing(count.to_string()),
-            );
+            let mut b = Button::new(p.name).ghost().full_width().dot(p.color);
+            if count > 0 {
+                b = b.trailing(count.to_string());
+            }
+            ui.add(b);
         }
 
         ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
@@ -344,9 +347,9 @@ fn group_header(ui: &mut Ui, status: Status, count: usize) {
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 44.0), Sense::hover());
     let p = ui.painter();
     let cy = rect.bottom() - 16.0;
-    let mut x = rect.left() + 24.0;
-    glyphs::status(p, egui::pos2(x + 7.0, cy), status, &t);
-    x += 26.0;
+    // No status glyph: each row already shows one, and a second copy in
+    // another column read as misaligned.
+    let x = rect.left() + 24.0;
     let label = p.layout_no_wrap(status.label().into(), t.font(TextRole::BodyStrong), c.text);
     let w = label.size().x;
     p.galley(egui::pos2(x, cy - label.size().y / 2.0), label, c.text);
@@ -375,13 +378,6 @@ fn task_row(ui: &mut Ui, task: &Task, project: &Project) {
     if hover > 0.0 {
         p.rect_filled(rect, 0.0, c.surface_hover.gamma_multiply(hover));
     }
-    let divider = t.divider(ui.ctx());
-    p.hline(
-        (rect.left() + 24.0)..=(rect.right() - 24.0),
-        rect.bottom() - divider.width / 2.0,
-        (divider.width, c.border.gamma_multiply(0.7)),
-    );
-
     let cy = rect.center().y;
     let small = t.font(TextRole::Small);
     let mut x = rect.left() + 24.0;
