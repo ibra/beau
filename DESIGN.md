@@ -68,6 +68,12 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **Colour:** the surrounding text colour. In a button the icon takes the label colour, 6pt before the label. A button's dot is centred in the same 16pt slot, so labels align where dots and icons are stacked.
 - **Icon-only buttons** are square (`Button::icon_only`) and carry a label for screen readers.
 
+### Checkbox and Switch
+- **Checkbox:** a 14pt box at `radius.sm`. Unchecked is `surface_raised` with a 1pt `border_strong` outline that darkens on hover. Checked fills with the accent (ink by default) and draws a 1.5pt check in `text_on_accent`; the check draws itself in as the fill fades. Indeterminate shows a dash.
+- **Switch:** a 28×16pt track with a 12pt knob. Off is a neutral gray, darker than a control border so it shows on every surface; on is the accent with a `text_on_accent` knob. The knob slides on the `base` spring and stretches 3pt while pressed.
+- **When to use which:** a switch applies at once (settings); a checkbox is confirmed later (forms, selection).
+- **Disabled:** neutral fill, subtle mark, full opacity. **Focus:** the standard ring around the box or track. Labels are part of the click target, 8pt after the control.
+
 ### Elevation (layered shadows)
 - **flat:** no shadow.
 - **raised:** used by cards. A hairline only, plus a 1px contact shadow at 4%.

@@ -440,3 +440,47 @@ fn button_icons() {
         |_| {},
     );
 }
+
+#[test]
+fn checkbox_switch() {
+    snapshot_both(
+        "checkbox_switch",
+        Some(vec2(440.0, 250.0)),
+        |ui| {
+            use beau::{Checkbox, Switch};
+            let t = beau::theme(ui);
+            ui.spacing_mut().item_spacing = vec2(t.space.xl, t.space.md);
+            ui.horizontal(|ui| {
+                ui.add(Checkbox::new(&mut false).label("Unchecked"));
+                ui.add(Checkbox::new(&mut true).label("Checked"));
+                ui.add(Checkbox::new(&mut false).label("Mixed").indeterminate(true));
+                ui.add(Checkbox::new(&mut true).label("Focused"));
+                ui.add(Checkbox::new(&mut true).accessible_name("No label"));
+            });
+            ui.horizontal(|ui| {
+                ui.add_enabled(false, Checkbox::new(&mut false).label("Disabled"));
+                ui.add_enabled(false, Checkbox::new(&mut true).label("Disabled"));
+            });
+            ui.add_space(t.space.md);
+            ui.horizontal(|ui| {
+                ui.add(Switch::new(&mut false).label("Off"));
+                ui.add(Switch::new(&mut true).label("On"));
+                ui.add(Switch::new(&mut true).accessible_name("No label"));
+            });
+            ui.horizontal(|ui| {
+                ui.add_enabled(false, Switch::new(&mut false).label("Disabled"));
+                ui.add_enabled(false, Switch::new(&mut true).label("Disabled"));
+            });
+            // On a raised surface, where the off track has least contrast.
+            Card::new().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.add(Checkbox::new(&mut false).label("On a card"));
+                    ui.add(Switch::new(&mut false).label("On a card"));
+                });
+            });
+        },
+        |h| {
+            h.get_by_label("Focused").focus();
+        },
+    );
+}
