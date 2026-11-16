@@ -1,5 +1,5 @@
 //! Drawing primitives egui lacks or makes tedious: layered shadows, gradients,
-//! crisp hairlines and focus rings.
+//! crisp hairlines, focus rings and icon strokes.
 //!
 //! Everything here returns [`egui::Shape`]s (or paints into a [`egui::Painter`])
 //! and takes colours and radii as arguments, so it never reaches into the theme.
@@ -8,6 +8,7 @@ mod border;
 mod chevrons;
 mod focus;
 mod gradient;
+mod icon;
 mod shadow;
 
 pub use border::{hairline_width, snap_rect, surface};
@@ -16,6 +17,8 @@ pub use focus::{
     FOCUS_GAP, FOCUS_HALO_ALPHA, FOCUS_HALO_WIDTH, FOCUS_WIDTH, focus_halo, focus_ring,
 };
 pub use gradient::{LinearGradient, gradient_rect};
+pub use icon::ICON_STROKE;
+pub(crate) use icon::{PathCmd, stroke_path};
 pub use shadow::{layered_shadow, shadow_margin};
 
 /// How a surface treats what lies behind it.

@@ -61,6 +61,26 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **Radii:** sm 4 · md 6 · lg 10 · full.
 - **Controls:** sm 24 · md 28 · lg 32. Row 36.
 
+### Icons
+- **Set:** 75 icons from [Lucide](https://lucide.dev) (`beau::icons`), drawn as vector strokes, not a font or images.
+- **Size:** 16 by default (`controls.icon`); 14 in small buttons.
+- **Stroke:** 1.5pt at every size, so an icon keeps the weight of the 13px text beside it. Ends and dots are extended to match Lucide's round caps.
+- **Colour:** the surrounding text colour. In a button the icon takes the label colour, 6pt before the label. A button's dot is centred in the same 16pt slot, so labels align where dots and icons are stacked.
+- **Icon-only buttons** are square (`Button::icon_only`) and carry a label for screen readers.
+
+### Checkbox and Switch
+- **Checkbox:** a 14pt box at `radius.sm`. Unchecked is `surface_raised` with a 1pt `border_strong` outline that darkens on hover. Checked fills with the accent (ink by default) and draws a 1.5pt check in `text_on_accent`; the check draws itself in as the fill fades. Indeterminate shows a dash.
+- **Switch:** a 28×16pt track with a 12pt knob. Off is a neutral gray, darker than a control border so it shows on every surface; on is the accent with a `text_on_accent` knob. The knob slides on the `base` spring and stretches 3pt while pressed.
+- **When to use which:** a switch applies at once (settings); a checkbox is confirmed later (forms, selection).
+- **Disabled:** neutral fill, subtle mark, full opacity. **Focus:** the standard ring around the box or track. Labels are part of the click target, 8pt after the control.
+
+### Slider
+- **Rail:** 4pt, fully rounded, `border_strong`, filled with the accent (ink by default) up to the knob. 160pt long by default.
+- **Knob:** 14pt, white (primary text colour in dark mode), with a 1pt `border_strong` outline and the raised contact shadow. It grows to 16pt under the pointer and while dragged. At either end its edge is flush with the rail.
+- **Keys:** Left and Right step the value, Home and End jump to the ends. **Focus:** the standard ring around the knob.
+- **Value field:** optional, an editable number field 8pt after the rail.
+- **Disabled:** neutral rail and knob, no shadow, full opacity.
+
 ### Elevation (layered shadows)
 - **flat:** no shadow.
 - **raised:** used by cards. A hairline only, plus a 1px contact shadow at 4%.

@@ -2,7 +2,7 @@ use egui::{
     CornerRadius, FontId, Frame, Margin, Response, RichText, Shape, Stroke, TextEdit, Ui, Widget,
 };
 
-use crate::{motion, paint, theme, tokens::Weight, typography};
+use crate::{behavior, motion, paint, theme, tokens::Weight, typography};
 
 /// A text field with an optional label, placeholder and animated focus ring.
 ///
@@ -133,11 +133,8 @@ impl Widget for TextInput<'_> {
             // Hover-only: a click-sensing area on top would steal focus from the field.
             let frame_hit = ui.interact(rect, response.id.with("beau.frame"), egui::Sense::hover());
 
-            // Skip the invisible sizing pass of a new Area: a focus request
-            // made there is dropped, which made autofocus timing-dependent.
-            if self.autofocus && !ui.is_sizing_pass() && super::just_appeared(ui.ctx(), response.id)
-            {
-                response.request_focus();
+            if self.autofocus {
+                behavior::focus_on_appear(ui, &response);
             }
 
             let ctx = ui.ctx();

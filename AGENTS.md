@@ -20,8 +20,11 @@ crates/beau/            the library
   src/typography.rs     bundled Inter, type scale
   src/paint/            shadows, gradients, hairlines, focus rings
   src/motion/           springs, easing, presence
+  src/behavior/         focus scopes, autofocus, floating placement (unstyled)
   src/components/       widgets
+  src/icons/            bundled icon set (set.rs is generated)
   assets/fonts/         Inter (OFL) and the tabular-digits subset
+  assets/icons/         Lucide SVG sources (ISC), icons.txt and the generator
 examples/tracker/       reference app (native and web)
 docs/screenshots/       images referenced by the README and PRs
 ```

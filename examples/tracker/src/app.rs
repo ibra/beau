@@ -1,7 +1,7 @@
 use eframe::egui::{self, Align, Key, Layout, Margin, Modifiers, Sense, Ui, vec2};
 
 use beau::tokens::TextRole;
-use beau::{Button, Card, Dialog, TextInput};
+use beau::{Button, Card, Checkbox, Dialog, Switch, TextInput, icons};
 
 use crate::Options;
 use crate::data::{self, Filter, Project, Status, Task};
@@ -16,6 +16,10 @@ pub struct TrackerApp {
     new_task_open: bool,
     draft_title: String,
     draft_description: String,
+    /// Keep the dialog open after creating a task.
+    create_another: bool,
+    /// Put keyboard focus back in the title field on the next frame.
+    refocus_title: bool,
     #[cfg(not(target_arch = "wasm32"))]
     screenshot: Option<crate::screenshot::ScreenshotJob>,
 }
@@ -34,6 +38,8 @@ impl TrackerApp {
             new_task_open: opts.dialog,
             draft_title: String::new(),
             draft_description: String::new(),
+            create_another: false,
+            refocus_title: false,
             #[cfg(not(target_arch = "wasm32"))]
             screenshot: opts.screenshot.map(crate::screenshot::ScreenshotJob::new),
         };
@@ -102,7 +108,14 @@ impl TrackerApp {
 
         for f in Filter::ALL {
             let count = self.tasks.iter().filter(|task| f.matches(task)).count();
+            let icon = match f {
+                Filter::MyIssues => icons::USER,
+                Filter::Active => icons::CIRCLE_DOT,
+                Filter::Backlog => icons::CIRCLE_DASHED,
+                Filter::Done => icons::CIRCLE_CHECK,
+            };
             let mut b = Button::new(f.label())
+                .icon(icon)
                 .ghost()
                 .full_width()
                 .selected(self.filter == f);
@@ -126,14 +139,25 @@ impl TrackerApp {
         }
 
         ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
-            let dark = Self::is_dark(ui.ctx());
-            let label = if dark { "Light mode" } else { "Dark mode" };
-            if ui
-                .add(Button::new(label).ghost().full_width().trailing("⇧D"))
-                .clicked()
-            {
-                self.set_dark(ui.ctx(), !dark);
-            }
+            let mut dark = Self::is_dark(ui.ctx());
+            egui::Frame::NONE
+                .inner_margin(Margin::symmetric(t.space.lg as i8, t.space.xs as i8))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = t.space.sm;
+                        ui.add(icons::MOON.color(t.colors.text_muted));
+                        ui.label(
+                            t.text("Dark mode", TextRole::Body)
+                                .color(t.colors.text_muted),
+                        );
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            let switch = Switch::new(&mut dark).accessible_name("Dark mode");
+                            if ui.add(switch).changed() {
+                                self.set_dark(ui.ctx(), dark);
+                            }
+                        });
+                    });
+                });
         });
     }
 
@@ -158,7 +182,12 @@ impl TrackerApp {
                     );
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui
-                            .add(Button::new("New task").primary().trailing("N"))
+                            .add(
+                                Button::new("New task")
+                                    .icon(icons::PLUS)
+                                    .primary()
+                                    .trailing("N"),
+                            )
                             .clicked()
                         {
                             self.new_task_open = true;
@@ -244,6 +273,9 @@ impl TrackerApp {
                         .placeholder("What needs doing?")
                         .autofocus(),
                 );
+                if std::mem::take(&mut self.refocus_title) {
+                    title.request_focus();
+                }
                 if title.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
                     create = true;
                 }
@@ -266,6 +298,9 @@ impl TrackerApp {
                     if ui.add(Button::new("Cancel").ghost()).clicked() {
                         cancel = true;
                     }
+                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        ui.add(Checkbox::new(&mut self.create_another).label("Create another"));
+                    });
                 });
             });
         self.new_task_open = open && !cancel;
@@ -291,7 +326,8 @@ impl TrackerApp {
             assignee: Some("IH"),
         });
         self.draft_title.clear();
-        self.new_task_open = false;
+        self.new_task_open = self.create_another;
+        self.refocus_title = self.create_another;
     }
 }
 

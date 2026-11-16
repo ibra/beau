@@ -77,6 +77,13 @@ fn snapshot_both_with(
     scene: impl FnMut(&mut Ui) + Clone,
     interact: impl Fn(&mut Harness<'_>),
 ) {
+    // One renderer at a time: creating wgpu devices from several test threads
+    // at once segfaults Mesa's lavapipe, the software renderer CI uses.
+    static RENDERER: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _renderer = RENDERER
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+
     // kittest requires the results of several harnesses in one test to be
     // merged, so a light failure still reports (or updates) dark too.
     let mut results = SnapshotResults::new();
@@ -358,5 +365,160 @@ fn stock_popups() {
             h.step();
             h.get_by_label("Export…").hover();
         },
+    );
+}
+
+#[test]
+fn icons() {
+    snapshot_both(
+        "icons",
+        Some(vec2(420.0, 250.0)),
+        |ui| {
+            let t = beau::theme(ui);
+            // The whole set at the default size, then one icon across sizes.
+            ui.spacing_mut().item_spacing = Vec2::splat(t.space.md);
+            for row in beau::icons::ALL.chunks(15) {
+                ui.horizontal(|ui| {
+                    for (_, icon) in row {
+                        ui.add(*icon);
+                    }
+                });
+            }
+            ui.add_space(t.space.md);
+            ui.horizontal(|ui| {
+                for size in [12.0, 14.0, 16.0, 20.0, 24.0, 32.0] {
+                    ui.add(beau::icons::SETTINGS.size(size));
+                    ui.add(beau::icons::CIRCLE_ALERT.size(size).color(t.colors.danger));
+                }
+            });
+        },
+        |_| {},
+    );
+}
+
+#[test]
+fn button_icons() {
+    snapshot_both(
+        "button_icons",
+        None,
+        |ui| {
+            use beau::icons;
+            for size in [Size::Sm, Size::Md, Size::Lg] {
+                ui.horizontal(|ui| {
+                    ui.add(
+                        Button::new("New task")
+                            .primary()
+                            .icon(icons::PLUS)
+                            .size(size),
+                    );
+                    ui.add(
+                        Button::new("Filter")
+                            .secondary()
+                            .icon(icons::FUNNEL)
+                            .size(size),
+                    );
+                    ui.add(Button::new("Inbox").ghost().icon(icons::INBOX).size(size));
+                    ui.add(
+                        Button::new("Delete")
+                            .danger()
+                            .icon(icons::TRASH_2)
+                            .size(size),
+                    );
+                    ui.add(Button::icon_only(icons::SEARCH, "Search").size(size));
+                    ui.add(
+                        Button::icon_only(icons::ELLIPSIS, "More")
+                            .ghost()
+                            .size(size),
+                    );
+                    ui.add_enabled(
+                        false,
+                        Button::new("Export").icon(icons::DOWNLOAD).size(size),
+                    );
+                });
+            }
+        },
+        |_| {},
+    );
+}
+
+#[test]
+fn checkbox_switch() {
+    snapshot_both(
+        "checkbox_switch",
+        Some(vec2(440.0, 250.0)),
+        |ui| {
+            use beau::{Checkbox, Switch};
+            let t = beau::theme(ui);
+            ui.spacing_mut().item_spacing = vec2(t.space.xl, t.space.md);
+            ui.horizontal(|ui| {
+                ui.add(Checkbox::new(&mut false).label("Unchecked"));
+                ui.add(Checkbox::new(&mut true).label("Checked"));
+                ui.add(Checkbox::new(&mut false).label("Mixed").indeterminate(true));
+                ui.add(Checkbox::new(&mut true).label("Focused"));
+                ui.add(Checkbox::new(&mut true).accessible_name("No label"));
+            });
+            ui.horizontal(|ui| {
+                ui.add_enabled(false, Checkbox::new(&mut false).label("Disabled"));
+                ui.add_enabled(false, Checkbox::new(&mut true).label("Disabled"));
+            });
+            ui.add_space(t.space.md);
+            ui.horizontal(|ui| {
+                ui.add(Switch::new(&mut false).label("Off"));
+                ui.add(Switch::new(&mut true).label("On"));
+                ui.add(Switch::new(&mut true).accessible_name("No label"));
+            });
+            ui.horizontal(|ui| {
+                ui.add_enabled(false, Switch::new(&mut false).label("Disabled"));
+                ui.add_enabled(false, Switch::new(&mut true).label("Disabled"));
+            });
+            // On a raised surface, where the off track has least contrast.
+            Card::new().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.add(Checkbox::new(&mut false).label("On a card"));
+                    ui.add(Switch::new(&mut false).label("On a card"));
+                });
+            });
+        },
+        |h| {
+            h.get_by_label("Focused").focus();
+        },
+    );
+}
+
+#[test]
+fn slider() {
+    snapshot_both(
+        "slider",
+        Some(vec2(440.0, 250.0)),
+        |ui| {
+            use beau::Slider;
+            let t = beau::theme(ui);
+            ui.spacing_mut().item_spacing = vec2(t.space.xl, t.space.md);
+            ui.horizontal(|ui| {
+                ui.add(Slider::new(&mut 0.0_f32, 0.0..=1.0).accessible_name("Empty"));
+                ui.add(Slider::new(&mut 0.4_f32, 0.0..=1.0).accessible_name("Focused"));
+            });
+            ui.horizontal(|ui| {
+                ui.add(Slider::new(&mut 1.0_f32, 0.0..=1.0).accessible_name("Full"));
+                ui.add_enabled(
+                    false,
+                    Slider::new(&mut 0.6_f32, 0.0..=1.0).accessible_name("Disabled"),
+                );
+            });
+            ui.add(
+                Slider::new(&mut 15_u32, 0..=60)
+                    .show_value(true)
+                    .accessible_name("Minutes"),
+            );
+            // On a raised surface, where the rail has least contrast.
+            Card::new().show(ui, |ui| {
+                ui.add(
+                    Slider::new(&mut 0.25_f32, 0.0..=1.0)
+                        .width(240.0)
+                        .accessible_name("On a card"),
+                );
+            });
+        },
+        |h| h.get_by_label("Focused").focus(),
     );
 }
