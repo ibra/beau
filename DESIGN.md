@@ -8,7 +8,7 @@ beau is dense, precise and calm. It aims to look and feel right in anyone's app:
 3. **Shadows only on things that float**: popovers, dialogs and menus. They are tight and layered (a contact shadow plus an ambient one), never a big fuzzy glow.
 4. **Consistent radii:** 4 / 6 / 10px. Crisp, but not severe.
 5. **Density.** 13px base type, 28px controls (24 / 28 / 32), 36px list rows. Digits are tabular everywhere, so numbers, IDs and dates align.
-6. **Keyboard is first-class and visible.** Shortcuts appear as muted trailing hints (`New task  N`, `esc`). The focus ring is 2px with a 1px gap, in `focus_ring` (ink by default). Text inputs are the exception: their border turns `focus_ring` and a soft 35% halo replaces the gap ring, which looks less heavy around large fields.
+6. **Keyboard is first-class and visible.** Shortcuts appear as muted trailing hints (`New task  N`, `esc`). The focus ring is 2px with a 1px gap, in `focus_ring` (ink by default). Text inputs are the exception: their border turns `focus_ring` and a soft 3px halo at 16%, flush against the border, replaces the gap ring, so a focused field reads as one soft edge rather than a double outline.
 7. **Motion is quick and critically damped**, about 120–200ms. Things fade and drift 4–6px; nothing bounces or flies.
 8. **Light and dark follow the OS** by default (`beau::install`). Apps can force a mode with `beau::set_preference`.
 
@@ -38,7 +38,7 @@ beau is dense, precise and calm. It aims to look and feel right in anyone's app:
 | `danger_text` | `#CE2C31` | `#FF6369` | destructive text |
 | `focus_ring` | derived | derived | accent pushed towards `text` until ≥3:1 on `surface` |
 | `selection` | derived | derived | accent wash (18% light, 32% dark) |
-| `backdrop` | ink 28% | black 55% | dialog scrim |
+| `backdrop` | ink 14% | black 55% | dialog scrim |
 
 Neutrals are untinted grays, so they don't fight warm or cool accents.
 
@@ -87,6 +87,8 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **Do** make disabled controls neutral (surface fill, subtle text, full opacity), not faded.
 - **Do** keep signals quiet: urgency is a tinted mark, not a solid red block.
 - **Do** separate groups with rhythm (space above a plain label), not bands or lines.
+- **Don't** rule every list row. Rows are separated by rhythm and the hover wash; a hairline belongs between regions, not items.
+- **Do** hide a zero count rather than print `0`.
 - **Do** align metadata in fixed-width columns so it reads down the list.
 - **Do** use tonal steps and hairlines for structure. **Don't** box everything.
 - **Do** keep the accent fill for the single most important action on screen. **Don't** use it as decoration.
@@ -109,11 +111,12 @@ lets a theme fully style. Everything comes from the theme's tokens.
 - **Menu and list rows** inside popups are ghost rows, 24pt tall, with a
   `surface_hover` wash at `radius.sm`, inset from the popup edge.
 - **Text edits** match `TextInput`: the border darkens on hover, then turns
-  `focus_ring` with a 35% halo when focused. Keyboard-focused buttons and
-  checkboxes use the same halo.
+  `focus_ring` with the soft 16% halo when focused. Keyboard-focused buttons
+  and checkboxes, whose only focus signal is the halo, use a stronger 35%.
 - **Checkboxes** are 14pt at `radius.sm` with an ink check. **Radios and
-  slider rails** are a soft gray (`surface_raised` plus the active wash) that
-  turns white under the pointer, so rails show on raised surfaces.
+  slider rails** are `surface_raised` plus the faint hover wash, outlined in
+  `border_strong`, turning white under the pointer: rails still show on
+  raised surfaces, and resting radios read as controls, not disabled discs.
 - **Separators** are physical-pixel hairlines. **Scroll bars** float: 2pt,
   growing to 6pt under the pointer, ink at low alpha, no track, hidden at
   rest.

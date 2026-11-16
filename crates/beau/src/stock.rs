@@ -10,7 +10,7 @@
 //!   contact shadow, hover and press washes, 500-weight labels, a soft focus
 //!   halo for keyboard focus, and ghost rows inside menus and popups.
 //! - **Text edits**: a raised field whose border darkens on hover and turns
-//!   `focus_ring` with a 35% halo when focused, like [`crate::TextInput`].
+//!   `focus_ring` with a soft halo when focused, like [`crate::TextInput`].
 //! - **Checkboxes**: a 14pt box at `radius.sm` with an ink check.
 //! - **Separators**: physical-pixel hairlines.
 //!
@@ -31,6 +31,7 @@ use egui::{
     },
 };
 
+use crate::paint;
 use crate::tokens::{Level, Mode, ShadowLayer, Theme};
 
 /// The [`StyleProvider`] that gives stock egui widgets beau's look.
@@ -90,13 +91,25 @@ fn shadow(layer: Option<&ShadowLayer>) -> Shadow {
     })
 }
 
-/// beau's focus treatment for frames: a solid 3pt halo at 35% of `focus_ring`.
+/// Keyboard focus on buttons and checkboxes: a solid 3pt halo at 35% of
+/// `focus_ring`. It is the only focus signal on those controls, so it stays
+/// stronger than the text-field halo.
 fn halo(t: &Theme) -> Shadow {
+    halo_at(t, 0.35)
+}
+
+/// A focused text edit: the same soft halo as [`paint::focus_halo`], drawn as
+/// a solid shadow. The border turning `focus_ring` is the main signal.
+fn field_halo(t: &Theme) -> Shadow {
+    halo_at(t, paint::FOCUS_HALO_ALPHA)
+}
+
+fn halo_at(t: &Theme, alpha: f32) -> Shadow {
     Shadow {
         offset: [0, 0],
         blur: 0,
-        spread: 3,
-        color: t.colors.focus_ring.gamma_multiply(0.35),
+        spread: paint::FOCUS_HALO_WIDTH as u8,
+        color: t.colors.focus_ring.gamma_multiply(alpha),
     }
 }
 
@@ -234,7 +247,11 @@ impl StyleProvider<TextEditStyle> for StockStyle {
             .stroke(Stroke::new(1.0, border))
             .corner_radius(CornerRadius::same(t.radius.md))
             .inner_margin(margin(t.space.lg - 2.0, t.space.xs))
-            .shadow(if focused { halo(&t) } else { Shadow::NONE });
+            .shadow(if focused {
+                field_halo(&t)
+            } else {
+                Shadow::NONE
+            });
         TextEditStyle {
             atom_layout: AtomLayoutStyle {
                 frame: frame.apply_stroke_and_expansion_without_layout_shift(frame.stroke, 0.0),

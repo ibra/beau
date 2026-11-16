@@ -168,12 +168,14 @@ impl Theme {
         let w = &mut v.widgets;
         // Most stock widgets are drawn by `crate::stock::StockStyle`; these
         // slots style the rest. `bg_fill` is the inside of radios and slider
-        // handles and, when inactive, the slider rail: a soft gray, so the
-        // rail shows on raised surfaces, turning white under the pointer.
+        // handles and, when inactive, the slider rail: the faint hover wash,
+        // so rails show on raised surfaces while resting radios read as
+        // outlined controls rather than disabled discs. White under the
+        // pointer.
         // `weak_bg_fill` frames buttons when no StockStyle is registered.
         // `fg_stroke` is radio labels and dots and slider handle outlines.
         for (wv, fill, weak, fg) in [
-            (&mut w.inactive, press, c.surface_raised, c.text),
+            (&mut w.inactive, hover, c.surface_raised, c.text),
             (&mut w.hovered, c.surface_raised, hover, c.text),
             (&mut w.active, c.surface_raised, press, c.text),
             (&mut w.open, c.surface_raised, press, c.text),

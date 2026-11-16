@@ -81,7 +81,7 @@ impl Palette {
             danger_hover: Color32::from_rgb(0xD9, 0x3D, 0x42),
             danger_text: Color32::from_rgb(0xCE, 0x2C, 0x31),
             text_on_danger: Color32::WHITE,
-            backdrop: Color32::from_rgba_unmultiplied(0x0C, 0x0C, 0x0C, 72),
+            backdrop: Color32::from_rgba_unmultiplied(0x0C, 0x0C, 0x0C, 36),
             // Accent-derived; filled in by `set_accent`.
             text_on_accent: Color32::WHITE,
             accent: INK,
