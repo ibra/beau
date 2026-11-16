@@ -15,12 +15,14 @@
 //! 2. [`typography`]: bundled Inter font and the type scale.
 //! 3. [`paint`]: shadows, gradients, hairlines, focus rings and icon strokes.
 //! 4. [`motion`]: springs, easing and presence (animate in *and* out).
-//! 5. [`components`]: widgets built on the above, [`icons`]: the bundled
+//! 5. [`behavior`]: unstyled focus management and positioning.
+//! 6. [`components`]: widgets built on the above, [`icons`]: the bundled
 //!    icon set, and [`stock`]: beau's look for egui's own widgets.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod behavior;
 pub mod components;
 pub mod icons;
 pub mod motion;
