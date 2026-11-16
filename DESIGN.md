@@ -74,6 +74,13 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **When to use which:** a switch applies at once (settings); a checkbox is confirmed later (forms, selection).
 - **Disabled:** neutral fill, subtle mark, full opacity. **Focus:** the standard ring around the box or track. Labels are part of the click target, 8pt after the control.
 
+### Slider
+- **Rail:** 4pt, fully rounded, `border_strong`, filled with the accent (ink by default) up to the knob. 160pt long by default.
+- **Knob:** 14pt, white (primary text colour in dark mode), with a 1pt `border_strong` outline and the raised contact shadow. It grows to 16pt under the pointer and while dragged. At either end its edge is flush with the rail.
+- **Keys:** Left and Right step the value, Home and End jump to the ends. **Focus:** the standard ring around the knob.
+- **Value field:** optional, an editable number field 8pt after the rail.
+- **Disabled:** neutral rail and knob, no shadow, full opacity.
+
 ### Elevation (layered shadows)
 - **flat:** no shadow.
 - **raised:** used by cards. A hairline only, plus a 1px contact shadow at 4%.

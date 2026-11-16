@@ -484,3 +484,41 @@ fn checkbox_switch() {
         },
     );
 }
+
+#[test]
+fn slider() {
+    snapshot_both(
+        "slider",
+        Some(vec2(440.0, 250.0)),
+        |ui| {
+            use beau::Slider;
+            let t = beau::theme(ui);
+            ui.spacing_mut().item_spacing = vec2(t.space.xl, t.space.md);
+            ui.horizontal(|ui| {
+                ui.add(Slider::new(&mut 0.0_f32, 0.0..=1.0).accessible_name("Empty"));
+                ui.add(Slider::new(&mut 0.4_f32, 0.0..=1.0).accessible_name("Focused"));
+            });
+            ui.horizontal(|ui| {
+                ui.add(Slider::new(&mut 1.0_f32, 0.0..=1.0).accessible_name("Full"));
+                ui.add_enabled(
+                    false,
+                    Slider::new(&mut 0.6_f32, 0.0..=1.0).accessible_name("Disabled"),
+                );
+            });
+            ui.add(
+                Slider::new(&mut 15_u32, 0..=60)
+                    .show_value(true)
+                    .accessible_name("Minutes"),
+            );
+            // On a raised surface, where the rail has least contrast.
+            Card::new().show(ui, |ui| {
+                ui.add(
+                    Slider::new(&mut 0.25_f32, 0.0..=1.0)
+                        .width(240.0)
+                        .accessible_name("On a card"),
+                );
+            });
+        },
+        |h| h.get_by_label("Focused").focus(),
+    );
+}

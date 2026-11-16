@@ -9,6 +9,7 @@ mod checkbox;
 mod dialog;
 mod icon;
 mod kbd;
+mod slider;
 mod switch;
 mod text_input;
 
@@ -18,6 +19,7 @@ pub use checkbox::Checkbox;
 pub use dialog::{Dialog, DialogResponse};
 pub use icon::Icon;
 pub use kbd::Kbd;
+pub use slider::Slider;
 pub use switch::Switch;
 pub use text_input::TextInput;
 
