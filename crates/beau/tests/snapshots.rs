@@ -77,6 +77,13 @@ fn snapshot_both_with(
     scene: impl FnMut(&mut Ui) + Clone,
     interact: impl Fn(&mut Harness<'_>),
 ) {
+    // One renderer at a time: creating wgpu devices from several test threads
+    // at once segfaults Mesa's lavapipe, the software renderer CI uses.
+    static RENDERER: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _renderer = RENDERER
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+
     // kittest requires the results of several harnesses in one test to be
     // merged, so a light failure still reports (or updates) dark too.
     let mut results = SnapshotResults::new();
