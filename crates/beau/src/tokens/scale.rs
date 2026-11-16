@@ -164,7 +164,7 @@ impl Default for Radii {
     }
 }
 
-/// Standard control heights, in points.
+/// Standard control heights and the icon size, in points.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Controls {
     /// Small control height (24).
@@ -175,6 +175,8 @@ pub struct Controls {
     pub lg: f32,
     /// List row height (32).
     pub row: f32,
+    /// Icon size (16): the side of the square an [`Icon`](crate::Icon) fills.
+    pub icon: f32,
 }
 
 impl Default for Controls {
@@ -184,6 +186,7 @@ impl Default for Controls {
             md: 28.0,
             lg: 32.0,
             row: 32.0,
+            icon: 16.0,
         }
     }
 }

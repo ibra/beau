@@ -367,3 +367,76 @@ fn stock_popups() {
         },
     );
 }
+
+#[test]
+fn icons() {
+    snapshot_both(
+        "icons",
+        Some(vec2(420.0, 250.0)),
+        |ui| {
+            let t = beau::theme(ui);
+            // The whole set at the default size, then one icon across sizes.
+            ui.spacing_mut().item_spacing = Vec2::splat(t.space.md);
+            for row in beau::icons::ALL.chunks(15) {
+                ui.horizontal(|ui| {
+                    for (_, icon) in row {
+                        ui.add(*icon);
+                    }
+                });
+            }
+            ui.add_space(t.space.md);
+            ui.horizontal(|ui| {
+                for size in [12.0, 14.0, 16.0, 20.0, 24.0, 32.0] {
+                    ui.add(beau::icons::SETTINGS.size(size));
+                    ui.add(beau::icons::CIRCLE_ALERT.size(size).color(t.colors.danger));
+                }
+            });
+        },
+        |_| {},
+    );
+}
+
+#[test]
+fn button_icons() {
+    snapshot_both(
+        "button_icons",
+        None,
+        |ui| {
+            use beau::icons;
+            for size in [Size::Sm, Size::Md, Size::Lg] {
+                ui.horizontal(|ui| {
+                    ui.add(
+                        Button::new("New task")
+                            .primary()
+                            .icon(icons::PLUS)
+                            .size(size),
+                    );
+                    ui.add(
+                        Button::new("Filter")
+                            .secondary()
+                            .icon(icons::FUNNEL)
+                            .size(size),
+                    );
+                    ui.add(Button::new("Inbox").ghost().icon(icons::INBOX).size(size));
+                    ui.add(
+                        Button::new("Delete")
+                            .danger()
+                            .icon(icons::TRASH_2)
+                            .size(size),
+                    );
+                    ui.add(Button::icon_only(icons::SEARCH, "Search").size(size));
+                    ui.add(
+                        Button::icon_only(icons::ELLIPSIS, "More")
+                            .ghost()
+                            .size(size),
+                    );
+                    ui.add_enabled(
+                        false,
+                        Button::new("Export").icon(icons::DOWNLOAD).size(size),
+                    );
+                });
+            }
+        },
+        |_| {},
+    );
+}

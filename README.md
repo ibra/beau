@@ -129,4 +129,6 @@ Licensed under either of
 - MIT license ([LICENSE-MIT](LICENSE-MIT))
 
 at your option. The bundled Inter font is licensed under the
-[SIL Open Font License 1.1](crates/beau/assets/fonts/OFL.txt).
+[SIL Open Font License 1.1](crates/beau/assets/fonts/OFL.txt). The bundled
+icons come from [Lucide](https://lucide.dev), licensed under the
+[ISC and MIT licences](crates/beau/assets/icons/LICENSE).

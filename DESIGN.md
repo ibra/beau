@@ -61,6 +61,13 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **Radii:** sm 4 · md 6 · lg 10 · full.
 - **Controls:** sm 24 · md 28 · lg 32. Row 36.
 
+### Icons
+- **Set:** 75 icons from [Lucide](https://lucide.dev) (`beau::icons`), drawn as vector strokes, not a font or images.
+- **Size:** 16 by default (`controls.icon`); 14 in small buttons.
+- **Stroke:** 1.5pt at every size, so an icon keeps the weight of the 13px text beside it. Ends and dots are extended to match Lucide's round caps.
+- **Colour:** the surrounding text colour. In a button the icon takes the label colour, 6pt before the label. A button's dot is centred in the same 16pt slot, so labels align where dots and icons are stacked.
+- **Icon-only buttons** are square (`Button::icon_only`) and carry a label for screen readers.
+
 ### Elevation (layered shadows)
 - **flat:** no shadow.
 - **raised:** used by cards. A hairline only, plus a 1px contact shadow at 4%.
