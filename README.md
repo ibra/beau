@@ -14,6 +14,8 @@ and web Rust apps a polished, consistent look with very little code: design
 tokens, typography, drawing primitives, motion and components that are
 designed together.
 
+**[Live demo →](https://ibra.github.io/beau/)**
+
 ![The tracker example in light mode](docs/screenshots/m1-light.png)
 
 > [!NOTE]
@@ -80,6 +82,8 @@ beau::set_preference(ctx, egui::ThemePreference::Dark);
 ## Example app
 
 `examples/tracker` is a small task tracker used as the showcase and test bed.
+It is deployed to [ibra.github.io/beau](https://ibra.github.io/beau/) on every
+push to `main`.
 
 ```sh
 cargo run -p tracker                      # native
