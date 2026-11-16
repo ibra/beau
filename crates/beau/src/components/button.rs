@@ -193,7 +193,14 @@ impl Widget for Button {
             .map(|s| painter.layout_no_wrap(s.clone(), trailing_font, Color32::PLACEHOLDER));
 
         let gap = t.space.md;
-        let dot_w = if self.dot.is_some() { 8.0 + gap } else { 0.0 };
+        // A dot sits in the same slot as an icon, so labels line up where
+        // dotted and icon buttons are stacked.
+        let dot_slot = t.controls.icon;
+        let dot_w = if self.dot.is_some() {
+            dot_slot + t.space.sm
+        } else {
+            0.0
+        };
         let icon_size = self.icon.map(|icon| {
             icon.explicit_size().unwrap_or(match self.size {
                 Size::Sm => t.controls.icon - 2.0,
@@ -362,7 +369,7 @@ impl Widget for Button {
             body.center().x - content_w / 2.0
         };
         if let Some(dot) = self.dot {
-            painter.circle_filled(pos2(start_x + 4.0, body.center().y), 3.5, dot);
+            painter.circle_filled(pos2(start_x + dot_slot / 2.0, body.center().y), 3.5, dot);
         }
         if let (Some(icon), Some(size)) = (self.icon, icon_size) {
             let center = pos2(start_x + dot_w + size / 2.0, body.center().y);
