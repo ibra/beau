@@ -16,7 +16,12 @@ designed together.
 
 **[Live demo →](https://ibra.github.io/beau/)**
 
-![The tracker example in light mode](docs/screenshots/m1-light.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/hero-dark.png">
+  <img alt="The tracker example, a small task tracker built with beau" src="docs/screenshots/hero-light.png">
+</picture>
+
+![Adding, completing, deleting and restoring tasks from the keyboard, then switching to dark mode](docs/screenshots/hero.gif)
 
 > [!NOTE]
 > beau is pre-1.0 and not yet published to crates.io. APIs may change between
@@ -92,7 +97,7 @@ cd examples/tracker && trunk serve        # web
 
 | Light | Dark |
 | --- | --- |
-| ![Dialog, light](docs/screenshots/m1-light-dialog.png) | ![Empty state, dark](docs/screenshots/empty-dark.png) |
+| ![Dialog, light](docs/screenshots/dialog-light.png) | ![Empty state, dark](docs/screenshots/empty-dark.png) |
 
 ## Stock egui vs beau
 
