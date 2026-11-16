@@ -81,6 +81,14 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **Value field:** optional, an editable number field 8pt after the rail.
 - **Disabled:** neutral rail and knob, no shadow, full opacity.
 
+### Lists
+- **Rows** are 36pt. Hover is a `surface_hover` wash across the full row.
+- **Selection** is keyboard focus: the focused row takes a `surface_active` wash, also across the full row. Rows don't draw the focus ring; it stays on controls.
+- **One tab stop.** A list is a single stop in the Tab order (`behavior::ListNav`). Up and Down move through it, Home and End jump to the ends, and with nothing focused the arrows enter the window's main list.
+- **Row actions** are ghost icon buttons that fade in while the row is hovered or selected. They sit at the end of the title, before the metadata columns, so the columns never move.
+- **A status mark is the row's checkbox.** It shows a tonal wash under the pointer and toggles on click.
+- **Leaving rows** show their new state first: a completed task stays put for 350ms with its mark checked and its title muted, then collapses.
+
 ### Elevation (layered shadows)
 - **flat:** no shadow.
 - **raised:** used by cards. A hairline only, plus a 1px contact shadow at 4%.
@@ -98,7 +106,7 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 
 ## Presence (animate in *and* out)
 - `motion::presence(ctx, id, visible, spec)` returns `Presence { t, phase }`, where `phase` is `Entering`, `Present`, `Exiting` or `Gone`. The caller keeps drawing until the phase is `Gone`. While exiting, the element is non-interactive.
-- `motion::PresenceList` covers keyed lists, where the caller removes an item from its data. The list keeps a clone of each departed item as a *ghost* at its old position. The ghost's height collapses to 0 (so neighbours slide up) and its opacity fades out; then the clone is dropped. New keys grow in from 0 height.
+- `motion::PresenceList` covers keyed lists, where the caller removes an item from its data. The list keeps a clone of each departed item as a *ghost* at its old position. The ghost's height collapses to 0 (so neighbours slide up) and its opacity fades out; then the clone is dropped. New keys grow in from 0 height. A list that is shown again after being hidden starts afresh, and each view of a list (a filter, a folder) gets its own id, so only real changes animate.
 - All state lives in egui temp memory and is garbage-collected two passes after it was last touched.
 
 ## Do / don't
