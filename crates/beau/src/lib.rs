@@ -29,7 +29,7 @@ pub mod stock;
 pub mod tokens;
 pub mod typography;
 
-pub use components::{Button, Card, Dialog, Icon, Size, TextInput, Variant};
+pub use components::{Button, Card, Checkbox, Dialog, Icon, Size, Switch, TextInput, Variant};
 pub use tokens::{Mode, Theme, mode, set_preference, set_theme, theme};
 
 /// Install beau on a context: fonts, the light and dark themes, and beau's
