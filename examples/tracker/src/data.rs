@@ -3,7 +3,7 @@
 use eframe::egui::Color32;
 
 /// Workflow status of a task.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Status {
     Backlog,
     Todo,
@@ -38,7 +38,6 @@ pub enum Priority {
 pub struct Task {
     pub number: u32,
     pub title: String,
-    #[allow(dead_code)] // shown in the detail panel (milestone 3)
     pub description: String,
     pub status: Status,
     pub priority: Priority,
@@ -54,7 +53,7 @@ pub struct Project {
 }
 
 /// Sidebar filters.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Filter {
     MyIssues,
     Active,
@@ -80,6 +79,16 @@ impl Filter {
             Self::Active => "No active tasks",
             Self::Backlog => "Backlog is clear",
             Self::Done => "Nothing finished yet",
+        }
+    }
+
+    /// The empty-state title when the list is also narrowed to `project`.
+    pub fn empty_title_in(self, project: &str) -> String {
+        match self {
+            Self::MyIssues => format!("Nothing assigned to you in {project}"),
+            Self::Active => format!("No active tasks in {project}"),
+            Self::Backlog => format!("No backlog in {project}"),
+            Self::Done => format!("Nothing finished in {project} yet"),
         }
     }
 

@@ -156,11 +156,16 @@ pub(crate) fn reconcile<K: Hash + Eq + Clone, T>(
 #[derive(Clone)]
 struct ListState<K, T> {
     slots: Vec<Slot<K, T>>,
+    /// The pass the list was last shown in.
+    pass: u64,
 }
 
 impl<K, T> Default for ListState<K, T> {
     fn default() -> Self {
-        Self { slots: Vec::new() }
+        Self {
+            slots: Vec::new(),
+            pass: 0,
+        }
     }
 }
 
@@ -172,6 +177,14 @@ impl<K, T> Default for ListState<K, T> {
 /// `Clone`: it's the price of drawing something the caller no longer has.
 ///
 /// Rows are stacked with no item spacing; give rows their own padding.
+///
+/// A row's widgets keep their ids for as long as its key is in the list,
+/// wherever the row moves, so focus and animations survive changes above it.
+///
+/// Rows that are there when the list first appears don't animate in, and
+/// neither do the rows of a list that comes back after being hidden. To
+/// switch a list to different contents without animating the difference
+/// (another filter, another folder), give each view its own `id_salt`.
 ///
 /// ```
 /// # egui::__run_test_ui(|ui| {
@@ -221,8 +234,12 @@ impl PresenceList {
         let spring = self.spring.unwrap_or(crate::theme(ui).motion.base);
         let ctx = ui.ctx().clone();
 
-        let prev: Option<ListState<K, T>> =
-            ctx.data_mut(|d| d.remove_temp::<ListState<K, T>>(list_id));
+        // A list that was hidden for a while starts afresh: what it showed
+        // before is stale, and animating the difference would be noise.
+        let pass = ctx.cumulative_pass_nr();
+        let prev: Option<ListState<K, T>> = ctx
+            .data_mut(|d| d.remove_temp::<ListState<K, T>>(list_id))
+            .filter(|prev| prev.pass + 1 >= pass);
         let first_show = prev.is_none();
         let current: Vec<(K, T)> = items.into_iter().map(|t| (key(&t), t)).collect();
         let mut slots = reconcile(prev.map(|p| p.slots).unwrap_or_default(), current);
@@ -245,7 +262,11 @@ impl PresenceList {
 
                 let mut child = ui.new_child(
                     UiBuilder::new()
-                        .id_salt(&slot.key)
+                        // An explicit id, so the ids of a row's widgets depend
+                        // only on its key. Derived from the row's position,
+                        // they would change when a row above is removed, and
+                        // the row would lose focus and its animations.
+                        .scope_id(row_id.with("row"))
                         .max_rect(Rect::from_min_size(top_left, vec2(width, f32::INFINITY))),
                 );
                 if let Some(h) = clip_h {
@@ -270,7 +291,7 @@ impl PresenceList {
             });
         });
 
-        ctx.data_mut(|d| d.insert_temp(list_id, ListState { slots }));
+        ctx.data_mut(|d| d.insert_temp(list_id, ListState { slots, pass }));
     }
 }
 

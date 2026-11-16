@@ -1,7 +1,11 @@
-use eframe::egui::{self, Align, Key, Layout, Margin, Modifiers, Sense, Ui, vec2};
+use eframe::egui::{
+    self, Align, Key, Layout, Margin, Modifiers, Sense, Ui, UiBuilder, WidgetInfo, vec2,
+};
 
+use beau::behavior::ListNav;
+use beau::motion::PresenceList;
 use beau::tokens::TextRole;
-use beau::{Button, Card, Checkbox, Dialog, Switch, TextInput, icons};
+use beau::{Button, Card, Checkbox, Dialog, Size, Switch, TextInput, icons};
 
 use crate::Options;
 use crate::data::{self, Filter, Project, Status, Task};
@@ -11,9 +15,22 @@ pub struct TrackerApp {
     tasks: Vec<Task>,
     projects: Vec<Project>,
     filter: Filter,
+    /// The project the list is narrowed to, combined with `filter`.
+    project: Option<usize>,
+    /// The task whose row has keyboard focus.
+    selected: Option<u32>,
+    /// Give this task's row keyboard focus when it is next shown.
+    focus_task: Option<u32>,
+    /// Tasks that just changed status: each stays in its old group for a
+    /// moment, so the new status shows before the row leaves.
+    lingering: Vec<Linger>,
+    /// Deleted tasks and where they were, most recent last (for undo).
+    deleted: Vec<(usize, Task)>,
     /// The `--stock` page, shown instead of the tracker.
     stock: Option<crate::stock::StockPage>,
-    new_task_open: bool,
+    dialog_open: bool,
+    /// The task the dialog edits; `None` creates a new one.
+    editing: Option<u32>,
     draft_title: String,
     draft_description: String,
     /// Keep the dialog open after creating a task.
@@ -34,8 +51,14 @@ impl TrackerApp {
             },
             projects: data::projects(),
             filter: Filter::Active,
+            project: None,
+            selected: None,
+            focus_task: None,
+            lingering: Vec::new(),
+            deleted: Vec::new(),
             stock: None,
-            new_task_open: opts.dialog,
+            dialog_open: opts.dialog,
+            editing: None,
             draft_title: String::new(),
             draft_description: String::new(),
             create_another: false,
@@ -56,7 +79,7 @@ impl TrackerApp {
         }
         // Follow the OS by default. Screenshots are deterministic: light unless --dark.
         #[cfg(not(target_arch = "wasm32"))]
-        let fixed = opts.dark || app.screenshot.is_some();
+        let fixed = opts.dark || demo;
         #[cfg(target_arch = "wasm32")]
         let fixed = opts.dark;
         if fixed {
@@ -79,15 +102,151 @@ impl TrackerApp {
     }
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
-        if ctx.egui_wants_keyboard_input() || self.new_task_open {
+        // A focused row or button doesn't type, so shortcuts stay live.
+        if ctx.text_edit_focused() || self.dialog_open {
             return;
         }
         if ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::N)) {
-            self.new_task_open = true;
+            self.open_new_task();
         }
         if ctx.input_mut(|i| i.consume_key(Modifiers::SHIFT, Key::D)) {
             self.set_dark(ctx, !Self::is_dark(ctx));
         }
+        if ctx.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Z)) {
+            self.undo_delete();
+        }
+    }
+
+    // ------------------------------------------------------------------ tasks
+
+    /// Whether `task` belongs to the current filter and project.
+    fn in_view(&self, task: &Task) -> bool {
+        self.filter.matches(task) && self.project.is_none_or(|p| task.project == p)
+    }
+
+    /// The rows of the list, top to bottom: a header per status, then its tasks.
+    fn rows(&self) -> Vec<Row> {
+        let mut rows = Vec::new();
+        for status in Status::ALL {
+            let tasks: Vec<&Task> = self
+                .tasks
+                .iter()
+                .filter(
+                    |task| match self.lingering.iter().find(|l| l.number == task.number) {
+                        Some(linger) => linger.group == status,
+                        None => task.status == status && self.in_view(task),
+                    },
+                )
+                .collect();
+            if tasks.is_empty() {
+                continue;
+            }
+            rows.push(Row::Header(status, tasks.len()));
+            rows.extend(tasks.into_iter().cloned().map(Row::Task));
+        }
+        rows
+    }
+
+    /// The task to focus when `number` leaves the list: the next one, or
+    /// the previous one if it was last.
+    fn neighbour(&self, number: u32) -> Option<u32> {
+        let numbers: Vec<u32> = self
+            .rows()
+            .iter()
+            .filter_map(|row| match row {
+                Row::Task(task) => Some(task.number),
+                Row::Header(..) => None,
+            })
+            .collect();
+        let i = numbers.iter().position(|n| *n == number)?;
+        numbers
+            .get(i + 1)
+            .or(i.checked_sub(1).and_then(|i| numbers.get(i)))
+            .copied()
+    }
+
+    /// Keep keyboard focus in the list when the focused row is about to go.
+    fn move_focus_off(&mut self, number: u32) {
+        if self.selected == Some(number) {
+            self.focus_task = self.neighbour(number);
+        }
+    }
+
+    fn toggle_done(&mut self, number: u32, now: f64) {
+        let Some(task) = self.tasks.iter_mut().find(|t| t.number == number) else {
+            return;
+        };
+        let old = task.status;
+        task.status = if old == Status::Done {
+            Status::Todo
+        } else {
+            Status::Done
+        };
+        // Toggled again while lingering: it stays in the group it is shown in.
+        let group = match self.lingering.iter().position(|l| l.number == number) {
+            Some(i) => self.lingering.remove(i).group,
+            None => old,
+        };
+        self.lingering.push(Linger {
+            number,
+            group,
+            until: now + LINGER_SECONDS,
+        });
+    }
+
+    /// Let rows whose moment has passed leave (or settle, if they still belong).
+    fn expire_lingering(&mut self, ctx: &egui::Context) {
+        let now = ctx.input(|i| i.time);
+        while let Some(i) = self.lingering.iter().position(|l| l.until <= now) {
+            let number = self.lingering[i].number;
+            let stays = self
+                .tasks
+                .iter()
+                .any(|t| t.number == number && self.in_view(t));
+            if !stays {
+                self.move_focus_off(number);
+            }
+            self.lingering.remove(i);
+        }
+        if let Some(next) = self.lingering.iter().map(|l| l.until).reduce(f64::min) {
+            ctx.request_repaint_after(std::time::Duration::from_secs_f64((next - now).max(0.0)));
+        }
+    }
+
+    fn delete_task(&mut self, number: u32) {
+        let Some(i) = self.tasks.iter().position(|t| t.number == number) else {
+            return;
+        };
+        self.move_focus_off(number);
+        self.lingering.retain(|l| l.number != number);
+        let task = self.tasks.remove(i);
+        self.deleted.push((i, task));
+    }
+
+    fn undo_delete(&mut self) {
+        let Some((i, task)) = self.deleted.pop() else {
+            return;
+        };
+        self.focus_task = Some(task.number);
+        self.tasks.insert(i.min(self.tasks.len()), task);
+    }
+
+    fn open_new_task(&mut self) {
+        if self.editing.take().is_some() {
+            self.draft_title.clear();
+            self.draft_description.clear();
+        }
+        self.dialog_open = true;
+    }
+
+    fn open_edit_task(&mut self, number: u32) {
+        let Some(task) = self.tasks.iter().find(|t| t.number == number) else {
+            return;
+        };
+        self.draft_title = task.title.clone();
+        self.draft_description = task.description.clone();
+        self.editing = Some(number);
+        self.dialog_open = true;
     }
 
     // ---------------------------------------------------------------- sidebar
@@ -107,7 +266,13 @@ impl TrackerApp {
         ui.add_space(t.space.xl);
 
         for f in Filter::ALL {
-            let count = self.tasks.iter().filter(|task| f.matches(task)).count();
+            // Counts say what a click will show: both lists count within
+            // the other's selection.
+            let count = self
+                .tasks
+                .iter()
+                .filter(|task| f.matches(task) && self.project.is_none_or(|p| task.project == p))
+                .count();
             let icon = match f {
                 Filter::MyIssues => icons::USER,
                 Filter::Active => icons::CIRCLE_DOT,
@@ -130,12 +295,23 @@ impl TrackerApp {
         ui.add_space(t.space.xl);
         section_label(ui, "Projects");
         for (i, p) in self.projects.iter().enumerate() {
-            let count = self.tasks.iter().filter(|task| task.project == i).count();
-            let mut b = Button::new(p.name).ghost().full_width().dot(p.color);
+            let count = self
+                .tasks
+                .iter()
+                .filter(|task| task.project == i && self.filter.matches(task))
+                .count();
+            let selected = self.project == Some(i);
+            let mut b = Button::new(p.name)
+                .ghost()
+                .full_width()
+                .dot(p.color)
+                .selected(selected);
             if count > 0 {
                 b = b.trailing(count.to_string());
             }
-            ui.add(b);
+            if ui.add(b).clicked() {
+                self.project = (!selected).then_some(i);
+            }
         }
 
         ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
@@ -165,21 +341,23 @@ impl TrackerApp {
 
     fn header(&mut self, ui: &mut Ui) {
         let t = beau::theme(ui);
-        let count = self
-            .tasks
-            .iter()
-            .filter(|task| self.filter.matches(task))
-            .count();
+        let count = self.tasks.iter().filter(|task| self.in_view(task)).count();
         egui::Frame::NONE
             .inner_margin(Margin::symmetric(24, 12))
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label(t.text(self.filter.label(), TextRole::Heading));
+                    if let Some(project) = self.project {
+                        let name = format!("· {}", self.projects[project].name);
+                        ui.label(t.text(name, TextRole::Heading).color(t.colors.text_subtle));
+                    }
                     ui.add_space(t.space.xxs);
-                    ui.label(
-                        t.text(count.to_string(), TextRole::Body)
-                            .color(t.colors.text_subtle),
-                    );
+                    if count > 0 {
+                        ui.label(
+                            t.text(count.to_string(), TextRole::Body)
+                                .color(t.colors.text_subtle),
+                        );
+                    }
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui
                             .add(
@@ -190,7 +368,7 @@ impl TrackerApp {
                             )
                             .clicked()
                         {
-                            self.new_task_open = true;
+                            self.open_new_task();
                         }
                     });
                 });
@@ -202,36 +380,63 @@ impl TrackerApp {
 
     fn task_list(&mut self, ui: &mut Ui) {
         let t = beau::theme(ui);
-        if !self.tasks.iter().any(|task| self.filter.matches(task)) {
-            self.empty_state(ui);
-            return;
-        }
+        let rows = self.rows();
+        let empty = rows.is_empty();
+        let mut actions = Vec::new();
+        let mut selected = None;
         egui::ScrollArea::vertical()
             .auto_shrink(false)
             .show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
-                for status in Status::ALL {
-                    let tasks: Vec<&Task> = self
-                        .tasks
-                        .iter()
-                        .filter(|task| task.status == status && self.filter.matches(task))
-                        .collect();
-                    if tasks.is_empty() {
-                        continue;
-                    }
-                    group_header(ui, status, tasks.len());
-                    for task in tasks {
-                        task_row(ui, task, &self.projects[task.project]);
-                    }
+                let mut nav =
+                    ListNav::new(ui.ctx(), ui.make_persistent_id("tasks")).idle_keys(true);
+                let mut cx = RowCx {
+                    nav: &mut nav,
+                    projects: &self.projects,
+                    focus: self.focus_task.take(),
+                    actions: &mut actions,
+                    selected: &mut selected,
+                };
+                // One list per view: switching the filter swaps the rows
+                // without animating the difference.
+                PresenceList::new(("tasks", self.filter, self.project)).show(
+                    ui,
+                    rows,
+                    Row::key,
+                    |ui, row, presence| match row {
+                        Row::Header(status, count) => group_header(ui, *status, *count),
+                        Row::Task(task) => task_row(ui, task, presence.is_interactive(), &mut cx),
+                    },
+                );
+                nav.finish(ui);
+                if empty {
+                    self.empty_state(ui);
                 }
                 ui.add_space(t.space.xxl);
             });
+        self.selected = selected;
+        let now = ui.input(|i| i.time);
+        for action in actions {
+            match action {
+                Action::Toggle(number) => self.toggle_done(number, now),
+                Action::Delete(number) => self.delete_task(number),
+                Action::Edit(number) => self.open_edit_task(number),
+            }
+        }
     }
 
     /// Shown when the current filter matches nothing.
     fn empty_state(&mut self, ui: &mut Ui) {
         let t = beau::theme(ui);
         let width = 360.0_f32.min(ui.available_width() - 2.0 * t.space.xxl);
+        let title = match self.project {
+            Some(p) => self.filter.empty_title_in(self.projects[p].name),
+            None => self.filter.empty_title().to_owned(),
+        };
+        // Fades in, so it doesn't pop while the last row is still leaving.
+        let id = ui.make_persistent_id(("empty", self.filter, self.project));
+        let shown = beau::motion::value_from(ui.ctx(), id, 0.0, 1.0, t.motion.slow);
+        ui.multiply_opacity(shown);
         ui.add_space(t.space.xxxl * 2.0);
         ui.vertical_centered(|ui| {
             ui.set_max_width(width);
@@ -241,14 +446,14 @@ impl TrackerApp {
                     ui.set_width(width - 2.0 * t.space.xxl);
                     ui.spacing_mut().item_spacing.y = t.space.xs;
                     ui.vertical(|ui| {
-                        ui.label(t.text(self.filter.empty_title(), TextRole::Title));
+                        ui.label(t.text(title, TextRole::Title));
                         ui.label(
                             t.text(self.filter.empty_hint(), TextRole::Body)
                                 .color(t.colors.text_muted),
                         );
                         ui.add_space(t.space.lg);
                         if ui.add(Button::new("New task").trailing("N")).clicked() {
-                            self.new_task_open = true;
+                            self.open_new_task();
                         }
                     });
                 });
@@ -257,13 +462,36 @@ impl TrackerApp {
 
     // ----------------------------------------------------------------- dialog
 
-    fn new_task_dialog(&mut self, ctx: &egui::Context) {
-        let mut create = false;
+    /// The dialog that creates a task, or edits `self.editing`.
+    fn task_dialog(&mut self, ctx: &egui::Context) {
+        let mut submit = false;
         let mut cancel = false;
-        let mut open = self.new_task_open;
-        Dialog::new("new-task")
-            .title("New task")
-            .description("Add a task to Beau Core.")
+        let mut open = self.dialog_open;
+        let editing = self
+            .editing
+            .and_then(|n| self.tasks.iter().find(|t| t.number == n));
+        let (title, description, action) = match editing {
+            Some(task) => (
+                "Edit task",
+                format!(
+                    "BEA-{} in {}.",
+                    task.number, self.projects[task.project].name
+                ),
+                "Save changes",
+            ),
+            None => (
+                "New task",
+                format!(
+                    "Add a task to {}.",
+                    self.projects[self.project.unwrap_or(0)].name
+                ),
+                "Create task",
+            ),
+        };
+        let is_new = editing.is_none();
+        Dialog::new("task")
+            .title(title)
+            .description(description)
             .open(&mut open)
             .show(ctx, |ui| {
                 let t = beau::theme(ui);
@@ -277,7 +505,7 @@ impl TrackerApp {
                     title.request_focus();
                 }
                 if title.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-                    create = true;
+                    submit = true;
                 }
                 ui.add_space(t.space.lg);
                 ui.add(
@@ -287,48 +515,113 @@ impl TrackerApp {
                         .multiline(3),
                 );
                 if ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter)) {
-                    create = true;
+                    submit = true;
                 }
                 Dialog::footer(ui, |ui| {
-                    let can_create = !self.draft_title.trim().is_empty();
-                    let b = Button::new("Create task").primary().trailing("⌘↵");
-                    if ui.add_enabled(can_create, b).clicked() {
-                        create = true;
+                    let can_submit = !self.draft_title.trim().is_empty();
+                    let b = Button::new(action).primary().trailing("⌘↵");
+                    if ui.add_enabled(can_submit, b).clicked() {
+                        submit = true;
                     }
                     if ui.add(Button::new("Cancel").ghost()).clicked() {
                         cancel = true;
                     }
-                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        ui.add(Checkbox::new(&mut self.create_another).label("Create another"));
-                    });
+                    if is_new {
+                        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                            ui.add(Checkbox::new(&mut self.create_another).label("Create another"));
+                        });
+                    }
                 });
             });
-        self.new_task_open = open && !cancel;
-        if create {
-            self.create_task();
+        self.dialog_open = open && !cancel;
+        if submit && self.dialog_open {
+            self.submit_task();
         }
     }
 
-    fn create_task(&mut self) {
-        let title = self.draft_title.trim();
+    fn submit_task(&mut self) {
+        let title = self.draft_title.trim().to_owned();
         if title.is_empty() {
+            return;
+        }
+        let description = std::mem::take(&mut self.draft_description);
+        self.draft_title.clear();
+        if let Some(number) = self.editing {
+            if let Some(task) = self.tasks.iter_mut().find(|t| t.number == number) {
+                task.title = title;
+                task.description = description;
+            }
+            self.dialog_open = false;
             return;
         }
         let number = self.tasks.iter().map(|t| t.number).max().unwrap_or(0) + 1;
         self.tasks.push(Task {
             number,
-            title: title.to_owned(),
-            description: std::mem::take(&mut self.draft_description),
+            title,
+            description,
             status: Status::Todo,
             priority: data::Priority::None,
-            project: 0,
+            project: self.project.unwrap_or(0),
             due: None,
             assignee: Some("IH"),
         });
-        self.draft_title.clear();
-        self.new_task_open = self.create_another;
+        // A new task is a to-do: show it if the current filter would hide it.
+        if !Filter::matches(self.filter, self.tasks.last().expect("just pushed")) {
+            self.filter = Filter::Active;
+        }
+        self.dialog_open = self.create_another;
         self.refocus_title = self.create_another;
     }
+}
+
+/// How long a row stays put after its status changes.
+const LINGER_SECONDS: f64 = 0.35;
+
+/// A task shown in the group it just left.
+struct Linger {
+    number: u32,
+    group: Status,
+    until: f64,
+}
+
+/// One row of the task list.
+#[derive(Clone)]
+enum Row {
+    Header(Status, usize),
+    Task(Task),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum RowKey {
+    Header(Status),
+    Task(u32),
+}
+
+impl Row {
+    fn key(&self) -> RowKey {
+        match self {
+            Self::Header(status, _) => RowKey::Header(*status),
+            Self::Task(task) => RowKey::Task(task.number),
+        }
+    }
+}
+
+/// Something a row asked for; applied after the list is drawn.
+enum Action {
+    Toggle(u32),
+    Delete(u32),
+    Edit(u32),
+}
+
+/// What every task row shares.
+struct RowCx<'a> {
+    nav: &'a mut ListNav,
+    projects: &'a [Project],
+    /// The task to give keyboard focus.
+    focus: Option<u32>,
+    actions: &'a mut Vec<Action>,
+    /// Set to the task whose row has focus.
+    selected: &'a mut Option<u32>,
 }
 
 fn section_label(ui: &mut Ui, text: &str) {
@@ -361,37 +654,100 @@ fn group_header(ui: &mut Ui, status: Status, count: usize) {
     );
 }
 
-fn task_row(ui: &mut Ui, task: &Task, project: &Project) {
+/// A task row. `live` is false while the row animates out.
+fn task_row(ui: &mut Ui, task: &Task, live: bool, cx: &mut RowCx<'_>) {
     let t = beau::theme(ui);
     let c = &t.colors;
-    let (rect, response) = ui.allocate_exact_size(
-        vec2(ui.available_width(), t.controls.row + 4.0),
-        Sense::click(),
-    );
-    let hover = beau::motion::toggle(
-        ui.ctx(),
-        response.id.with("hover"),
-        response.hovered(),
+    let number = task.number;
+    let project = &cx.projects[task.project];
+    let sense = if live {
+        cx.nav.sense(number)
+    } else {
+        Sense::hover()
+    };
+    let (rect, response) =
+        ui.allocate_exact_size(vec2(ui.available_width(), t.controls.row + 4.0), sense);
+    let mut focused = false;
+    if live {
+        response.widget_info(|| WidgetInfo::labeled(egui::Role::Button, true, &task.title));
+        if cx.focus == Some(number) {
+            response.request_focus();
+        }
+        focused = cx.nav.item(ui, number, &response);
+    }
+    if focused {
+        *cx.selected = Some(number);
+        let key = |key| ui.input_mut(|i| i.consume_key(Modifiers::NONE, key));
+        if key(Key::Enter) {
+            cx.actions.push(Action::Edit(number));
+        } else if key(Key::Space) {
+            cx.actions.push(Action::Toggle(number));
+        } else if key(Key::Delete) || key(Key::Backspace) {
+            cx.actions.push(Action::Delete(number));
+        }
+    }
+    if response.double_clicked() {
+        cx.actions.push(Action::Edit(number));
+    }
+
+    // The pointer is over the row, even while it is on one of its controls.
+    let inside = live && ui.rect_contains_pointer(rect);
+    let ctx = ui.ctx().clone();
+    let hover = beau::motion::toggle(&ctx, response.id.with("hover"), inside, t.motion.fast);
+    let select = beau::motion::toggle(&ctx, response.id.with("focus"), focused, t.motion.fast);
+    let actions = beau::motion::toggle(
+        &ctx,
+        response.id.with("actions"),
+        inside || focused,
         t.motion.fast,
     );
-    let p = ui.painter();
+
+    let p = ui.painter().clone();
     if hover > 0.0 {
         p.rect_filled(rect, 0.0, c.surface_hover.gamma_multiply(hover));
+    }
+    if select > 0.0 {
+        p.rect_filled(rect, 0.0, c.surface_active.gamma_multiply(select));
     }
     let cy = rect.center().y;
     let small = t.font(TextRole::Small);
     let mut x = rect.left() + 24.0;
-    glyphs::priority(p, egui::pos2(x + 7.0, cy), task.priority, &t);
+    glyphs::priority(&p, egui::pos2(x + 7.0, cy), task.priority, &t);
     x += 26.0;
-    let id = p.layout_no_wrap(format!("BEA-{}", task.number), small.clone(), c.text_subtle);
+    let id = p.layout_no_wrap(format!("BEA-{number}"), small.clone(), c.text_subtle);
     p.galley(egui::pos2(x, cy - id.size().y / 2.0), id, c.text_subtle);
     x += 60.0;
-    glyphs::status(p, egui::pos2(x + 7.0, cy), task.status, &t);
+
+    // The status mark is the row's checkbox: click it to complete the task.
+    let mark = egui::pos2(x + 7.0, cy);
+    if live {
+        let hit = egui::Rect::from_center_size(mark, vec2(22.0, 22.0));
+        let done = task.status == Status::Done;
+        let toggle = ui.interact(hit, response.id.with("status"), Sense::CLICK);
+        toggle.widget_info(|| WidgetInfo::selected(egui::Role::CheckBox, true, done, "Done"));
+        let over = beau::motion::toggle(
+            &ctx,
+            toggle.id.with("hover"),
+            toggle.hovered(),
+            t.motion.fast,
+        );
+        if over > 0.0 {
+            // A tonal wash that shows on the hover and selected fills alike.
+            p.circle_filled(mark, 11.0, c.text.gamma_multiply(0.08 * over));
+        }
+        if toggle
+            .on_hover_cursor(egui::CursorIcon::PointingHand)
+            .clicked()
+        {
+            cx.actions.push(Action::Toggle(number));
+        }
+    }
+    glyphs::status(&p, mark, task.status, &t);
     x += 26.0;
 
     // Right side, laid out right-to-left.
     let mut right = rect.right() - 24.0;
-    glyphs::avatar(p, egui::pos2(right - 11.0, cy), task.assignee, &t);
+    glyphs::avatar(&p, egui::pos2(right - 11.0, cy), task.assignee, &t);
     right -= 22.0 + 16.0;
     // Fixed-width columns so dates and projects align down the list.
     let due_w = 52.0;
@@ -414,6 +770,23 @@ fn task_row(ui: &mut Ui, task: &Task, project: &Project) {
         c.text_muted,
     );
     right = px - 24.0;
+
+    // Row actions sit at the end of the title, so the columns never move.
+    if live && actions > 0.0 {
+        let slot = egui::Rect::from_center_size(
+            egui::pos2(right - t.controls.sm / 2.0, cy),
+            egui::Vec2::splat(t.controls.sm),
+        );
+        let mut child = ui.new_child(UiBuilder::new().max_rect(slot));
+        child.multiply_opacity(actions);
+        let delete = Button::icon_only(icons::TRASH_2, "Delete task")
+            .ghost()
+            .size(Size::Sm);
+        if child.add(delete).clicked() {
+            cx.actions.push(Action::Delete(number));
+        }
+    }
+    right -= (t.controls.sm + t.space.md) * actions;
 
     let title_color = if task.status == Status::Done {
         c.text_muted
@@ -446,6 +819,7 @@ impl eframe::App for TrackerApp {
 
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.shortcuts(ctx);
+        self.expire_lingering(ctx);
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(job) = &mut self.screenshot {
             job.tick(ctx);
@@ -475,6 +849,6 @@ impl eframe::App for TrackerApp {
                 self.task_list(ui);
             });
         let ctx = ui.ctx().clone();
-        self.new_task_dialog(&ctx);
+        self.task_dialog(&ctx);
     }
 }
