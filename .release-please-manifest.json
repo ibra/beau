@@ -1,4 +1,4 @@
 {
-  "crates/beau": "0.2.0",
-  "examples/tracker": "0.0.1"
+  "crates/beau": "0.3.0",
+  "examples/tracker": "0.0.2"
 }
