@@ -5,6 +5,7 @@ use egui::{
 
 use super::Kbd;
 use crate::{
+    behavior::FocusScope,
     motion::{self, Presence},
     paint, theme,
     tokens::{Level, TextRole},
@@ -14,6 +15,8 @@ use crate::{
 ///
 /// * A backdrop fades in behind it. Clicking the backdrop closes it.
 /// * `Escape` closes it.
+/// * Tab stays inside it while it is open, and closing it returns keyboard
+///   focus to the widget that had it before.
 /// * While closing, it keeps drawing (fading and settling back) but no longer
 ///   takes input. Then it's gone.
 ///
@@ -131,16 +134,14 @@ impl<'o> Dialog<'o> {
             .fixed_pos(screen.min)
             .interactable(interactive)
             .role(egui::accesskit::Role::Dialog);
-        if interactive {
-            let layer = area.layer();
-            ctx.memory_mut(|m| m.set_modal_layer(layer));
-        }
+        // Tab stays inside the dialog while it is open; closing it hands
+        // focus back to whatever had it before (usually the trigger).
+        FocusScope::new(self.id).update(ctx, area.layer(), interactive);
 
         let mut close = false;
         let out = area.show(ctx, |ui| {
-            // Backdrop.
-            let mut backdrop =
-                ui.new_child(UiBuilder::new().sense(Sense::click()).max_rect(screen));
+            // Backdrop. Clickable but not focusable: it is not a tab stop.
+            let mut backdrop = ui.new_child(UiBuilder::new().sense(Sense::CLICK).max_rect(screen));
             backdrop.set_min_size(screen.size());
             if backdrop.response().clicked() {
                 close = true;
@@ -161,7 +162,8 @@ impl<'o> Dialog<'o> {
                 let mut panel = ui.new_child(
                     UiBuilder::new()
                         .max_rect(Rect::from_min_size(rect.min, vec2(w, f32::INFINITY)))
-                        .sense(Sense::click_and_drag())
+                        // Swallows clicks and drags, without being a tab stop.
+                        .sense(Sense::CLICK | Sense::DRAG)
                         .layout(Layout::top_down(Align::Min)),
                 );
                 let where_bg = panel.painter().add(Shape::Noop);
@@ -243,6 +245,88 @@ mod tests {
         out.viewport_output
             .values()
             .any(|v| v.repaint_delay < std::time::Duration::from_secs(1))
+    }
+
+    /// One pass with Tab (or Shift+Tab) pressed; returns the focused widget.
+    fn tab(ctx: &Context, time: &mut f64, shift: bool, f: impl FnMut(&mut Ui)) -> Option<Id> {
+        *time += 1.0 / 60.0;
+        let modifiers = Modifiers {
+            shift,
+            ..Default::default()
+        };
+        let input = egui::RawInput {
+            time: Some(*time),
+            screen_rect: Some(Rect::from_min_size(pos2(0.0, 0.0), vec2(1000.0, 700.0))),
+            events: vec![
+                egui::Event::ModifiersChanged(modifiers),
+                egui::Event::Key {
+                    key: Key::Tab,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers,
+                },
+            ],
+            ..Default::default()
+        };
+        let _ = ctx.run_ui(input, f);
+        // Focus moves take effect over the following pass.
+        *time += 1.0 / 60.0;
+        ctx.memory(|m| m.focused())
+    }
+
+    #[test]
+    fn traps_focus_while_open_and_restores_it_on_close() {
+        let ctx = Context::default();
+        crate::install(&ctx);
+        let mut open = false;
+        let mut time = 0.0;
+        let mut ids = [Id::NULL; 4]; // page button, trigger, dialog first, dialog second
+        let ui_fn = |ui: &mut Ui, open: &mut bool, ids: &mut [Id; 4]| {
+            ids[0] = ui.button("Page").id;
+            ids[1] = ui.button("Open").id;
+            Dialog::new("t").open(open).show(ui.ctx(), |ui| {
+                ids[2] = ui.button("First").id;
+                ids[3] = ui.button("Second").id;
+            });
+        };
+        let settle = |ctx: &Context, time: &mut f64, open: &mut bool, ids: &mut [Id; 4]| {
+            for _ in 0..40 {
+                *time += 1.0 / 60.0;
+                pass(ctx, *time, |ui| ui_fn(ui, open, ids));
+            }
+        };
+
+        // Focus the trigger, then open the dialog.
+        settle(&ctx, &mut time, &mut open, &mut ids);
+        ctx.memory_mut(|m| m.request_focus(ids[1]));
+        settle(&ctx, &mut time, &mut open, &mut ids);
+        assert_eq!(ctx.memory(|m| m.focused()), Some(ids[1]));
+        open = true;
+        settle(&ctx, &mut time, &mut open, &mut ids);
+
+        // Tab and Shift+Tab only ever land on the dialog's two buttons.
+        let mut seen = Vec::new();
+        for shift in [false, false, false, false, true, true, true] {
+            tab(&ctx, &mut time, shift, |ui| ui_fn(ui, &mut open, &mut ids));
+            settle(&ctx, &mut time, &mut open, &mut ids);
+            let focused = ctx
+                .memory(|m| m.focused())
+                .expect("focus stays in the dialog");
+            assert!(
+                focused == ids[2] || focused == ids[3],
+                "focus escaped the dialog"
+            );
+            seen.push(focused);
+        }
+        assert!(seen.contains(&ids[2]) && seen.contains(&ids[3]));
+        // Forward order: first, second, then wrap to first.
+        assert_eq!(seen[..3], [ids[2], ids[3], ids[2]]);
+
+        // Closing hands focus back to the trigger.
+        open = false;
+        settle(&ctx, &mut time, &mut open, &mut ids);
+        assert_eq!(ctx.memory(|m| m.focused()), Some(ids[1]));
     }
 
     #[test]
