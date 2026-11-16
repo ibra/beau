@@ -4,7 +4,7 @@ use egui::{
 };
 
 use crate::{
-    motion,
+    Icon, motion,
     paint::{self, LinearGradient},
     theme,
     tokens::Weight,
@@ -47,11 +47,15 @@ pub enum Size {
 /// }
 /// ui.add(Button::new("Cancel").ghost().size(Size::Sm));
 /// ui.add(Button::new("Delete").danger());
+/// ui.add(Button::new("New task").icon(beau::icons::PLUS));
+/// ui.add(Button::icon_only(beau::icons::SEARCH, "Search").ghost());
 /// # });
 /// ```
 #[must_use = "add it with `ui.add(...)`"]
 pub struct Button {
     text: String,
+    icon: Option<Icon>,
+    icon_only: bool,
     trailing: Option<String>,
     dot: Option<Color32>,
     variant: Variant,
@@ -66,6 +70,8 @@ impl Button {
     pub fn new(text: impl Into<String>) -> Self {
         Self {
             text: text.into(),
+            icon: None,
+            icon_only: false,
             trailing: None,
             dot: None,
             variant: Variant::Secondary,
@@ -74,6 +80,22 @@ impl Button {
             align_left: false,
             selected: false,
         }
+    }
+
+    /// A square button showing only an icon. `label` is not drawn; it names
+    /// the button for screen readers.
+    pub fn icon_only(icon: Icon, label: impl Into<String>) -> Self {
+        let mut button = Self::new(label);
+        button.icon = Some(icon);
+        button.icon_only = true;
+        button
+    }
+
+    /// An icon before the label. It takes the label's colour and a size that
+    /// suits the button, unless set on the icon itself.
+    pub fn icon(mut self, icon: Icon) -> Self {
+        self.icon = Some(icon);
+        self
     }
 
     /// Set the variant.
@@ -163,7 +185,8 @@ impl Widget for Button {
         let trailing_font = FontId::new(12.0, typography::family(Weight::Regular));
 
         let mut painter = ui.painter().clone();
-        let galley = painter.layout_no_wrap(self.text.clone(), font, Color32::PLACEHOLDER);
+        let label = if self.icon_only { "" } else { &self.text };
+        let galley = painter.layout_no_wrap(label.to_owned(), font, Color32::PLACEHOLDER);
         let trailing = self
             .trailing
             .as_ref()
@@ -171,9 +194,22 @@ impl Widget for Button {
 
         let gap = t.space.md;
         let dot_w = if self.dot.is_some() { 8.0 + gap } else { 0.0 };
+        let icon_size = self.icon.map(|icon| {
+            icon.explicit_size().unwrap_or(match self.size {
+                Size::Sm => t.controls.icon - 2.0,
+                Size::Md | Size::Lg => t.controls.icon,
+            })
+        });
+        let icon_w = match icon_size {
+            Some(size) if self.icon_only => size,
+            Some(size) => size + t.space.sm,
+            None => 0.0,
+        };
         let content_w =
-            dot_w + galley.size().x + trailing.as_ref().map_or(0.0, |g| gap + g.size().x);
-        let width = if self.full_width {
+            dot_w + icon_w + galley.size().x + trailing.as_ref().map_or(0.0, |g| gap + g.size().x);
+        let width = if self.icon_only {
+            height
+        } else if self.full_width {
             ui.available_width()
         } else {
             (content_w + 2.0 * pad).max(height)
@@ -328,7 +364,15 @@ impl Widget for Button {
         if let Some(dot) = self.dot {
             painter.circle_filled(pos2(start_x + 4.0, body.center().y), 3.5, dot);
         }
-        let text_pos = pos2(start_x + dot_w, body.center().y - galley.size().y / 2.0);
+        if let (Some(icon), Some(size)) = (self.icon, icon_size) {
+            let center = pos2(start_x + dot_w + size / 2.0, body.center().y);
+            let color = icon.explicit_color().unwrap_or(look.text);
+            icon.paint_at(&painter, center, size, color);
+        }
+        let text_pos = pos2(
+            start_x + dot_w + icon_w,
+            body.center().y - galley.size().y / 2.0,
+        );
         let text_w = galley.size().x;
         painter.galley(text_pos, galley, look.text);
 

@@ -1,7 +1,7 @@
 use eframe::egui::{self, Align, Key, Layout, Margin, Modifiers, Sense, Ui, vec2};
 
 use beau::tokens::TextRole;
-use beau::{Button, Card, Dialog, Size, TextInput};
+use beau::{Button, Card, Dialog, Size, TextInput, icons};
 
 use crate::Options;
 use crate::data::{self, Filter, Project, Status, Task};
@@ -99,7 +99,14 @@ impl TrackerApp {
 
         for f in Filter::ALL {
             let count = self.tasks.iter().filter(|task| f.matches(task)).count();
+            let icon = match f {
+                Filter::MyIssues => icons::USER,
+                Filter::Active => icons::CIRCLE_DOT,
+                Filter::Backlog => icons::CIRCLE_DASHED,
+                Filter::Done => icons::CIRCLE_CHECK,
+            };
             let b = Button::new(f.label())
+                .icon(icon)
                 .ghost()
                 .full_width()
                 .selected(self.filter == f)
@@ -124,10 +131,15 @@ impl TrackerApp {
 
         ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
             let dark = Self::is_dark(ui.ctx());
-            let label = if dark { "Light mode" } else { "Dark mode" };
+            let (label, icon) = if dark {
+                ("Light mode", icons::SUN)
+            } else {
+                ("Dark mode", icons::MOON)
+            };
             if ui
                 .add(
                     Button::new(label)
+                        .icon(icon)
                         .ghost()
                         .size(Size::Sm)
                         .full_width()
@@ -161,7 +173,12 @@ impl TrackerApp {
                     );
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui
-                            .add(Button::new("New task").primary().trailing("N"))
+                            .add(
+                                Button::new("New task")
+                                    .icon(icons::PLUS)
+                                    .primary()
+                                    .trailing("N"),
+                            )
                             .clicked()
                         {
                             self.new_task_open = true;

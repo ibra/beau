@@ -6,12 +6,14 @@
 mod button;
 mod card;
 mod dialog;
+mod icon;
 mod kbd;
 mod text_input;
 
 pub use button::{Button, Size, Variant};
 pub use card::Card;
 pub use dialog::{Dialog, DialogResponse};
+pub use icon::Icon;
 pub use kbd::Kbd;
 pub use text_input::TextInput;
 

@@ -1,0 +1,89 @@
+# The bundled icon set: one Lucide icon name per line (https://lucide.dev).
+# After editing, run tools/generate.py (see its header).
+
+# Navigation and layout
+house
+inbox
+search
+settings
+menu
+panel-left
+layout-grid
+list
+layers
+globe
+
+# Arrows and chevrons
+chevron-down
+chevron-up
+chevron-left
+chevron-right
+chevrons-up-down
+arrow-left
+arrow-right
+arrow-up
+arrow-down
+arrow-up-down
+external-link
+
+# Actions
+plus
+minus
+x
+check
+pencil
+trash-2
+copy
+download
+upload
+refresh-cw
+undo-2
+funnel
+sliders-horizontal
+ellipsis
+ellipsis-vertical
+grip-vertical
+link
+log-out
+
+# Status and feedback
+circle
+circle-check
+circle-x
+circle-alert
+circle-dashed
+circle-dot
+circle-question-mark
+info
+triangle-alert
+loader-circle
+clock
+zap
+
+# Objects
+file
+file-text
+folder
+archive
+calendar
+tag
+flag
+star
+heart
+bookmark
+bell
+mail
+message-square
+paperclip
+image
+lock
+eye
+eye-off
+hash
+command
+
+# People and theme
+user
+users
+sun
+moon

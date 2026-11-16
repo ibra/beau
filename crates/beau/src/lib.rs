@@ -13,22 +13,23 @@
 //!
 //! 1. [`tokens`]: the design system as data ([`Theme`]).
 //! 2. [`typography`]: bundled Inter font and the type scale.
-//! 3. [`paint`]: shadows, gradients, hairlines and focus rings.
+//! 3. [`paint`]: shadows, gradients, hairlines, focus rings and icon strokes.
 //! 4. [`motion`]: springs, easing and presence (animate in *and* out).
-//! 5. [`components`]: widgets built on the above, and [`stock`]: beau's look
-//!    for egui's own widgets.
+//! 5. [`components`]: widgets built on the above, [`icons`]: the bundled
+//!    icon set, and [`stock`]: beau's look for egui's own widgets.
 
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 pub mod components;
+pub mod icons;
 pub mod motion;
 pub mod paint;
 pub mod stock;
 pub mod tokens;
 pub mod typography;
 
-pub use components::{Button, Card, Dialog, Size, TextInput, Variant};
+pub use components::{Button, Card, Dialog, Icon, Size, TextInput, Variant};
 pub use tokens::{Mode, Theme, mode, set_preference, set_theme, theme};
 
 /// Install beau on a context: fonts, the light and dark themes, and beau's
