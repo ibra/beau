@@ -10,7 +10,8 @@
 //! diff in git. See CONTRIBUTING.md › Snapshot tests.
 
 use beau::{
-    Button, Card, Dialog, Popover, Size, TextInput, Tooltip, components::Kbd, tokens::TextRole,
+    Button, Card, Dialog, Popover, Select, Size, TextInput, Tooltip, components::Kbd,
+    tokens::TextRole,
 };
 use egui::{Color32, Theme, Ui, Vec2, accesskit::Role, vec2};
 use egui_kittest::{Harness, SnapshotOptions, SnapshotResults, kittest::Queryable};
@@ -576,5 +577,53 @@ fn tooltip() {
                 h.step();
             }
         },
+    );
+}
+
+#[test]
+fn select() {
+    snapshot_both_with(
+        // A fixed viewport: the open list is an Area.
+        "select",
+        Some(vec2(420.0, 260.0)),
+        &SnapshotOptions::new().threshold(DIALOG_THRESHOLD),
+        |ui| {
+            let t = beau::theme(ui);
+            let mut project = 1;
+            let mut empty: Option<u8> = None;
+            ui.horizontal_top(|ui| {
+                ui.spacing_mut().item_spacing.x = t.space.lg;
+                ui.vertical(|ui| {
+                    ui.set_width(180.0);
+                    let select = ui.add(
+                        Select::new("project", &mut project)
+                            .label("Project")
+                            .option_dot(0, "Backend", Color32::from_rgb(0x3B, 0x82, 0xF6))
+                            .option_dot(1, "Design", Color32::from_rgb(0xE5, 0x48, 0x4D))
+                            .option_dot(2, "Frontend", Color32::from_rgb(0x30, 0xA4, 0x6C)),
+                    );
+                    if ui.ctx().cumulative_pass_nr() == 0 {
+                        Popover::set_open(ui.ctx(), select.id.with("beau.popover"), true);
+                    }
+                });
+                ui.vertical(|ui| {
+                    ui.set_width(180.0);
+                    ui.add(
+                        Select::new("assignee", &mut empty)
+                            .label("Assignee")
+                            .placeholder("Unassigned")
+                            .option(Some(1), "Ibrahim"),
+                    );
+                    ui.add_space(t.space.md);
+                    ui.add_enabled(
+                        false,
+                        Select::new("disabled", &mut project)
+                            .label("Disabled")
+                            .option(1, "Design"),
+                    );
+                });
+            });
+        },
+        |_| {},
     );
 }

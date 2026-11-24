@@ -105,6 +105,19 @@ impl<'o> Popover<'o> {
         ctx.data_mut(|d| d.insert_temp(id.with("beau.open"), open));
     }
 
+    /// Whether the popover with this `id` is open (for popovers whose state
+    /// is kept in memory).
+    pub fn is_open(ctx: &Context, id: Id) -> bool {
+        ctx.data(|d| d.get_temp(id.with("beau.open")))
+            .unwrap_or(false)
+    }
+
+    /// The accessibility role of the surface ([`Role::Dialog`] by default).
+    pub(crate) fn role(mut self, role: Role) -> Self {
+        self.role = role;
+        self
+    }
+
     /// The preferred side of the anchor ([`Side::Bottom`] by default).
     pub fn side(mut self, side: Side) -> Self {
         self.side = side;

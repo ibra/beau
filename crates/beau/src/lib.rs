@@ -32,8 +32,8 @@ pub mod tokens;
 pub mod typography;
 
 pub use components::{
-    Button, Card, Checkbox, Dialog, Icon, Popover, Size, Slider, Switch, TextInput, Tooltip,
-    Variant,
+    Button, Card, Checkbox, Dialog, Icon, Popover, Select, Size, Slider, Switch, TextInput,
+    Tooltip, Variant,
 };
 pub use tokens::{Mode, Theme, mode, set_preference, set_theme, theme};
 

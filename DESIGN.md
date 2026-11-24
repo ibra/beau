@@ -87,6 +87,12 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **Tooltip:** inverted, so it reads as a label rather than as floating UI: the text colour as the fill, 12px medium text in `surface_raised`, a shortcut hint in the same colour at 60%. 24pt tall, `radius.sm`, no hairline, no shadow, 6pt from the widget, above it by default. It shows after the pointer rests for 500ms (at once for 300ms after another tooltip hid), or on focus from Tab, and hides on press, on Escape and when something modal covers the widget.
 - **Popover:** `surface_overlay`, a hairline, `radius.md`, the overlay shadow, 12pt padding, 4pt below its trigger. The trigger toggles it. While open it is modal: Tab stays inside, and the first click outside only closes it (the page doesn't react). Escape closes it, innermost first when popovers nest, and focus returns to where it was.
 
+### Select
+- **Trigger:** a 28pt field like `TextInput`: `surface_raised`, a 1pt `border_strong` outline, `radius.md`, the value in 13px body text (placeholder in `text_subtle`), a muted dot or icon before it, and up/down chevrons at the end. It fills the width by default and takes a label above. Hover and open add the hover wash; keyboard focus shows the standard ring.
+- **List:** a popover at least as wide as the trigger, 4pt padding, 28pt rows inset by 6pt, so the dots, labels and the trailing check line up with the trigger's. The chosen option has a trailing check. A single highlight (`surface_hover` at `radius.sm`) follows both the pointer and the keys; the chosen option has it when the list opens. Long lists scroll after 9½ rows.
+- **Keys:** Enter, Space, Up or Down open it; Up, Down, Home and End move; Enter or Space chooses; Escape closes. Focus returns to the trigger.
+- **Disabled:** neutral fill, subtle text, no outline, full opacity.
+
 ### Lists
 - **Rows** are 36pt. Hover is a `surface_hover` wash across the full row.
 - **Selection** is keyboard focus: the focused row takes a `surface_active` wash, also across the full row. Rows don't draw the focus ring; it stays on controls.
