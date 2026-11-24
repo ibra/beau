@@ -81,6 +81,12 @@ Large sizes use Inter's *display* optical size, which gives tighter, sharper hea
 - **Value field:** optional, an editable number field 8pt after the rail.
 - **Disabled:** neutral rail and knob, no shadow, full opacity.
 
+### Floating content
+- **Placement:** next to the anchor by `behavior::place`. Content flips to the other side when it doesn't fit, and is clamped 8pt inside the window.
+- **Motion:** fades in on presence while drifting 4pt away from the anchor and scaling up from 97% about the edge that faces it; out the same way.
+- **Tooltip:** inverted, so it reads as a label rather than as floating UI: the text colour as the fill, 12px medium text in `surface_raised`, a shortcut hint in the same colour at 60%. 24pt tall, `radius.sm`, no hairline, no shadow, 6pt from the widget, above it by default. It shows after the pointer rests for 500ms (at once for 300ms after another tooltip hid), or on focus from Tab, and hides on press, on Escape and when something modal covers the widget.
+- **Popover:** `surface_overlay`, a hairline, `radius.md`, the overlay shadow, 12pt padding, 4pt below its trigger. The trigger toggles it. While open it is modal: Tab stays inside, and the first click outside only closes it (the page doesn't react). Escape closes it, innermost first when popovers nest, and focus returns to where it was.
+
 ### Lists
 - **Rows** are 36pt. Hover is a `surface_hover` wash across the full row.
 - **Selection** is keyboard focus: the focused row takes a `surface_active` wash, also across the full row. Rows don't draw the focus ring; it stays on controls.
