@@ -177,4 +177,4 @@ beau stays opinionated: few settings, each moving many tokens together so any
 combination still looks designed. The accent is configurable today
 (`Theme::with_accent`, `beau::install_with_accent`). Roundness, density and
 font choice are planned for
-[v0.4.0](https://github.com/ibra/beau/milestone/4) (#27, #28, #29).
+[v0.7.0](https://github.com/ibra/beau/milestone/4) (#27, #28, #29).
