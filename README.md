@@ -42,9 +42,9 @@ designed together.
   physical-pixel hairlines and focus rings.
 - **Motion.** Frame-rate-independent springs and *presence*: elements and list
   rows animate out after you stop drawing them. Nothing repaints while idle.
-- **Components.** `Button`, `TextInput`, `Checkbox`, `Switch`, `Slider`,
-  `Card`, `Dialog`, `Popover`, `Tooltip`, `Icon` and `Kbd`, with more on the
-  [roadmap](https://github.com/ibra/beau/milestones).
+- **Components.** `Button`, `TextInput`, `Select`, `Checkbox`, `Switch`,
+  `Slider`, `Card`, `Dialog`, `Popover`, `Tooltip`, `Icon` and `Kbd`, with more
+  on the [roadmap](https://github.com/ibra/beau/milestones).
 - **Stock widgets too.** `beau::install` restyles egui's own buttons,
   checkboxes, radios, sliders, combo boxes, drag values, text edits, menus,
   tooltips and scroll bars, so existing egui code looks at home next to beau
