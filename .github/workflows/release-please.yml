@@ -43,7 +43,15 @@ jobs:
         run: |
           version=$(cargo metadata --no-deps --format-version 1 \
             | jq -r '.packages[] | select(.name == "beau") | .version')
-          if curl -sSf https://index.crates.io/be/au/beau | jq -e --arg v "$version" 'select(.vers == $v)' > /dev/null; then
+          status=$(curl -sS -o index.json -w '%{http_code}' https://index.crates.io/be/au/beau)
+          if [ "$status" = 404 ]; then
+            # Trusted publishing only works for a crate that exists.
+            echo "::warning::beau is not on crates.io yet. Publish $version by hand (cargo publish -p beau), then add this workflow as a trusted publisher on crates.io."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "$status" != 200 ]; then
+            echo "::error::crates.io index returned $status"
+            exit 1
+          elif jq -e --arg v "$version" 'select(.vers == $v)' index.json > /dev/null; then
             echo "beau $version is already on crates.io"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
