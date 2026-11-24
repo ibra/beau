@@ -12,6 +12,10 @@ keywords = ["egui", "gui", "ui", "design-system", "components"]
 categories = ["gui", "wasm"]
 include = ["src/**", "assets/**", "CHANGELOG.md", "LICENSE-*"]
 
+[package.metadata.docs.rs]
+# beau has no features and no platform-specific API: one target is enough.
+targets = ["x86_64-unknown-linux-gnu"]
+
 [dependencies]
 # The only dependency: beau is a layer on top of egui. `experimental` exposes
 # egui's StyleProvider API, which beau uses to draw stock egui widgets
