@@ -247,3 +247,137 @@ fn tooltip_shows_after_a_delay_and_hides_when_pressed() {
     }
     assert!(!tip(&harness), "pressing the widget hides it");
 }
+
+/// A "Priority" select over 1..=3, starting at 2 (Medium).
+fn select_harness() -> Harness<'static, u32> {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(360.0, 320.0))
+        .with_max_steps(64)
+        .with_context_setup(beau::install)
+        .build_ui_state(
+            |ui, value: &mut u32| {
+                let _ = ui.button("Before");
+                ui.add(
+                    beau::Select::new("priority", value)
+                        .label("Priority")
+                        .width(160.0)
+                        .option(1, "Low")
+                        .option(2, "Medium")
+                        .option(3, "High"),
+                );
+            },
+            2,
+        );
+    harness.run();
+    harness
+}
+
+fn focused_label(harness: &Harness<'_, u32>) -> String {
+    harness
+        .query_by(|node| node.is_focused())
+        .map(|n| n.accesskit_node().label().unwrap_or_default())
+        .unwrap_or_else(|| "<none>".to_owned())
+}
+
+#[test]
+fn select_chooses_with_the_pointer() {
+    let mut harness = select_harness();
+    assert!(harness.query_by_label("High").is_none());
+
+    harness.get_by_label("Priority").click();
+    harness.run();
+    harness.get_by_label("High").click();
+    harness.run();
+    assert_eq!(*harness.state(), 3);
+    assert!(
+        harness.query_by_label("Low").is_none(),
+        "closes after a choice"
+    );
+}
+
+#[test]
+fn select_is_keyboard_operable_end_to_end() {
+    let mut harness = select_harness();
+    harness.get_by_label("Before").focus();
+    harness.run();
+    harness.key_press(Key::Tab);
+    harness.run();
+    assert_eq!(focused_label(&harness), "Priority");
+
+    // Down opens the list with the chosen option focused.
+    harness.key_press(Key::ArrowDown);
+    harness.run();
+    assert_eq!(focused_label(&harness), "Medium");
+
+    harness.key_press(Key::ArrowDown);
+    harness.run();
+    assert_eq!(focused_label(&harness), "High");
+    harness.key_press(Key::Enter);
+    harness.run();
+    assert_eq!(*harness.state(), 3);
+    assert!(harness.query_by_label("Low").is_none());
+    assert_eq!(focused_label(&harness), "Priority", "focus returns");
+
+    // Escape closes without choosing.
+    harness.key_press(Key::Enter);
+    harness.run();
+    harness.key_press(Key::Home);
+    harness.run();
+    assert_eq!(focused_label(&harness), "Low");
+    harness.key_press(Key::Escape);
+    harness.run();
+    assert!(harness.query_by_label("Low").is_none());
+    assert_eq!(*harness.state(), 3);
+    assert_eq!(focused_label(&harness), "Priority");
+}
+
+#[test]
+fn select_in_a_dialog_closes_before_the_dialog() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(640.0, 480.0))
+        .with_max_steps(64)
+        .with_context_setup(beau::install)
+        .build_ui_state(
+            |ui, (open, value): &mut (bool, u32)| {
+                beau::Dialog::new("dialog")
+                    .title("New task")
+                    .open(open)
+                    .show(ui.ctx(), |ui| {
+                        ui.add(
+                            beau::Select::new("status", value)
+                                .label("Status")
+                                .option(1, "Todo")
+                                .option(2, "Done"),
+                        );
+                        let _ = ui.button("Elsewhere");
+                    });
+            },
+            (true, 1),
+        );
+    harness.run();
+
+    harness.get_by_label("Status").click();
+    harness.run();
+    assert!(harness.query_by_label("Done").is_some());
+    harness.key_press(Key::Escape);
+    harness.run();
+    assert!(
+        harness.query_by_label("Done").is_none(),
+        "Escape closes the list"
+    );
+    assert!(harness.state().0, "but not the dialog");
+
+    harness.get_by_label("Status").click();
+    harness.run();
+    harness.get_by_label("Elsewhere").click();
+    harness.run();
+    assert!(harness.query_by_label("Done").is_none());
+    assert!(
+        harness.state().0,
+        "a click in the dialog only closes the list"
+    );
+
+    harness.key_press(Key::Escape);
+    harness.run();
+    assert!(!harness.state().0, "then Escape closes the dialog");
+}
