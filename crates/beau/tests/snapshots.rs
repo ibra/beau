@@ -9,7 +9,9 @@
 //! `UPDATE_SNAPSHOTS=1 cargo test -p beau --test snapshots`, then review the
 //! diff in git. See CONTRIBUTING.md › Snapshot tests.
 
-use beau::{Button, Card, Dialog, Size, TextInput, components::Kbd, tokens::TextRole};
+use beau::{
+    Button, Card, Dialog, Popover, Size, TextInput, Tooltip, components::Kbd, tokens::TextRole,
+};
 use egui::{Color32, Theme, Ui, Vec2, accesskit::Role, vec2};
 use egui_kittest::{Harness, SnapshotOptions, SnapshotResults, kittest::Queryable};
 
@@ -520,5 +522,59 @@ fn slider() {
             });
         },
         |h| h.get_by_label("Focused").focus(),
+    );
+}
+
+#[test]
+fn popover() {
+    snapshot_both_with(
+        // A fixed viewport: popovers are Areas, which fitting can't see.
+        "popover",
+        Some(vec2(360.0, 220.0)),
+        // Soft shadows, like the dialog.
+        &SnapshotOptions::new().threshold(DIALOG_THRESHOLD),
+        |ui| {
+            let t = beau::theme(ui);
+            let trigger = ui.add(Button::new("Share").icon(beau::icons::LINK));
+            if ui.ctx().cumulative_pass_nr() == 0 {
+                Popover::set_open(ui.ctx(), trigger.id.with("beau.popover"), true);
+            }
+            Popover::new(&trigger).width(260.0).show(ui.ctx(), |ui| {
+                ui.label(t.text("Share task", TextRole::BodyStrong));
+                ui.label(
+                    t.text("Anyone with the link can view it.", TextRole::Body)
+                        .color(t.colors.text_muted),
+                );
+                ui.add_space(t.space.md);
+                ui.add(Button::new("Copy link").size(Size::Sm));
+            });
+        },
+        |_| {},
+    );
+}
+
+#[test]
+fn tooltip() {
+    snapshot_both_with(
+        "tooltip",
+        Some(vec2(280.0, 120.0)),
+        &SnapshotOptions::default(),
+        |ui| {
+            ui.add_space(40.0);
+            ui.horizontal(|ui| {
+                ui.add_space(80.0);
+                let delete = ui.add(Button::icon_only(beau::icons::TRASH_2, "Delete").ghost());
+                Tooltip::new("Delete task")
+                    .shortcut("Del")
+                    .show(ui, &delete);
+            });
+        },
+        |h| {
+            h.get_by_label("Delete").hover();
+            // Rest on the button past the tooltip delay.
+            for _ in 0..30 {
+                h.step();
+            }
+        },
     );
 }
