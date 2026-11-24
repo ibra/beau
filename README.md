@@ -7,6 +7,8 @@
 
 [![CI](https://github.com/ibra/beau/actions/workflows/ci.yml/badge.svg)](https://github.com/ibra/beau/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+[![crates.io](https://img.shields.io/crates/v/beau.svg)](https://crates.io/crates/beau)
+[![docs.rs](https://img.shields.io/docsrs/beau)](https://docs.rs/beau)
 ![Rust 1.95+](https://img.shields.io/badge/rust-1.95%2B-orange.svg)
 
 A design system for [egui](https://github.com/emilk/egui). beau gives native
@@ -17,15 +19,15 @@ designed together.
 **[Live demo →](https://ibra.github.io/beau/)**
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/hero-dark.png">
-  <img alt="The tracker example, a small task tracker built with beau" src="docs/screenshots/hero-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ibra/beau/main/docs/screenshots/hero-dark.png">
+  <img alt="The tracker example, a small task tracker built with beau" src="https://raw.githubusercontent.com/ibra/beau/main/docs/screenshots/hero-light.png">
 </picture>
 
-![Adding, completing, deleting and restoring tasks from the keyboard, then switching to dark mode](docs/screenshots/hero.gif)
+![Adding, completing, deleting and restoring tasks from the keyboard, then switching to dark mode](https://raw.githubusercontent.com/ibra/beau/main/docs/screenshots/hero.gif)
 
 > [!NOTE]
-> beau is pre-1.0 and not yet published to crates.io. APIs may change between
-> minor versions; see the [changelog](crates/beau/CHANGELOG.md).
+> beau is pre-1.0. APIs may change between minor versions; see the
+> [changelog](https://github.com/ibra/beau/blob/main/crates/beau/CHANGELOG.md).
 
 ## Features
 
@@ -40,7 +42,8 @@ designed together.
   physical-pixel hairlines and focus rings.
 - **Motion.** Frame-rate-independent springs and *presence*: elements and list
   rows animate out after you stop drawing them. Nothing repaints while idle.
-- **Components.** `Button`, `TextInput`, `Card`, `Dialog` and `Kbd`, with more
+- **Components.** `Button`, `TextInput`, `Select`, `Checkbox`, `Switch`,
+  `Slider`, `Card`, `Dialog`, `Popover`, `Tooltip`, `Icon` and `Kbd`, with more
   on the [roadmap](https://github.com/ibra/beau/milestones).
 - **Stock widgets too.** `beau::install` restyles egui's own buttons,
   checkboxes, radios, sliders, combo boxes, drag values, text edits, menus,
@@ -50,12 +53,11 @@ designed together.
 
 ## Installation
 
-Until the first crates.io release, depend on the repository:
+beau is on [crates.io](https://crates.io/crates/beau). It builds on egui
+0.37:
 
-```toml
-[dependencies]
-beau = { git = "https://github.com/ibra/beau" }
-egui = "0.37"
+```sh
+cargo add beau egui@0.37
 ```
 
 ## Usage
@@ -97,7 +99,7 @@ cd examples/tracker && trunk serve        # web
 
 | Light | Dark |
 | --- | --- |
-| ![Dialog, light](docs/screenshots/dialog-light.png) | ![Empty state, dark](docs/screenshots/empty-dark.png) |
+| ![Dialog, light](https://raw.githubusercontent.com/ibra/beau/main/docs/screenshots/dialog-light.png) | ![Empty state, dark](https://raw.githubusercontent.com/ibra/beau/main/docs/screenshots/empty-dark.png) |
 
 ## Stock egui vs beau
 
@@ -112,28 +114,29 @@ cargo run -p tracker -- --stock     # with beau
 
 | | Stock egui | With beau |
 | --- | --- | --- |
-| Light | ![Stock egui, light](docs/screenshots/compare-stock-light.png) | ![beau, light](docs/screenshots/compare-beau-light.png) |
-| Dark | ![Stock egui, dark](docs/screenshots/compare-stock-dark.png) | ![beau, dark](docs/screenshots/compare-beau-dark.png) |
+| Light | ![Stock egui, light](https://raw.githubusercontent.com/ibra/beau/main/docs/screenshots/compare-stock-light.png) | ![beau, light](https://raw.githubusercontent.com/ibra/beau/main/docs/screenshots/compare-beau-light.png) |
+| Dark | ![Stock egui, dark](https://raw.githubusercontent.com/ibra/beau/main/docs/screenshots/compare-stock-dark.png) | ![beau, dark](https://raw.githubusercontent.com/ibra/beau/main/docs/screenshots/compare-beau-dark.png) |
 
 ## Design
 
-[`DESIGN.md`](DESIGN.md) describes the visual language: tokens, motion
-principles and the rules every component follows.
+[`DESIGN.md`](https://github.com/ibra/beau/blob/main/DESIGN.md) describes the
+visual language: tokens, motion principles and the rules every component
+follows.
 
 ## Contributing
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and
-the [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues privately as
-described in [SECURITY.md](SECURITY.md).
+Contributions are welcome. Please read [CONTRIBUTING.md](https://github.com/ibra/beau/blob/main/CONTRIBUTING.md) and
+the [Code of Conduct](https://github.com/ibra/beau/blob/main/CODE_OF_CONDUCT.md). Report security issues privately as
+described in [SECURITY.md](https://github.com/ibra/beau/blob/main/SECURITY.md).
 
 ## License
 
 Licensed under either of
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
-- MIT license ([LICENSE-MIT](LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/ibra/beau/blob/main/LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](https://github.com/ibra/beau/blob/main/LICENSE-MIT))
 
 at your option. The bundled Inter font is licensed under the
-[SIL Open Font License 1.1](crates/beau/assets/fonts/OFL.txt). The bundled
+[SIL Open Font License 1.1](https://github.com/ibra/beau/blob/main/crates/beau/assets/fonts/OFL.txt). The bundled
 icons come from [Lucide](https://lucide.dev), licensed under the
-[ISC and MIT licences](crates/beau/assets/icons/LICENSE).
+[ISC and MIT licences](https://github.com/ibra/beau/blob/main/crates/beau/assets/icons/LICENSE).

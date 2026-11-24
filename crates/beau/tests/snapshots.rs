@@ -9,7 +9,10 @@
 //! `UPDATE_SNAPSHOTS=1 cargo test -p beau --test snapshots`, then review the
 //! diff in git. See CONTRIBUTING.md › Snapshot tests.
 
-use beau::{Button, Card, Dialog, Size, TextInput, components::Kbd, tokens::TextRole};
+use beau::{
+    Button, Card, Dialog, Popover, Select, Size, TextInput, Tooltip, components::Kbd,
+    tokens::TextRole,
+};
 use egui::{Color32, Theme, Ui, Vec2, accesskit::Role, vec2};
 use egui_kittest::{Harness, SnapshotOptions, SnapshotResults, kittest::Queryable};
 
@@ -520,5 +523,107 @@ fn slider() {
             });
         },
         |h| h.get_by_label("Focused").focus(),
+    );
+}
+
+#[test]
+fn popover() {
+    snapshot_both_with(
+        // A fixed viewport: popovers are Areas, which fitting can't see.
+        "popover",
+        Some(vec2(360.0, 220.0)),
+        // Soft shadows, like the dialog.
+        &SnapshotOptions::new().threshold(DIALOG_THRESHOLD),
+        |ui| {
+            let t = beau::theme(ui);
+            let trigger = ui.add(Button::new("Share").icon(beau::icons::LINK));
+            if ui.ctx().cumulative_pass_nr() == 0 {
+                Popover::set_open(ui.ctx(), trigger.id.with("beau.popover"), true);
+            }
+            Popover::new(&trigger).width(260.0).show(ui.ctx(), |ui| {
+                ui.label(t.text("Share task", TextRole::BodyStrong));
+                ui.label(
+                    t.text("Anyone with the link can view it.", TextRole::Body)
+                        .color(t.colors.text_muted),
+                );
+                ui.add_space(t.space.md);
+                ui.add(Button::new("Copy link").size(Size::Sm));
+            });
+        },
+        |_| {},
+    );
+}
+
+#[test]
+fn tooltip() {
+    snapshot_both_with(
+        "tooltip",
+        Some(vec2(280.0, 120.0)),
+        &SnapshotOptions::default(),
+        |ui| {
+            ui.add_space(40.0);
+            ui.horizontal(|ui| {
+                ui.add_space(80.0);
+                let delete = ui.add(Button::icon_only(beau::icons::TRASH_2, "Delete").ghost());
+                Tooltip::new("Delete task")
+                    .shortcut("Del")
+                    .show(ui, &delete);
+            });
+        },
+        |h| {
+            h.get_by_label("Delete").hover();
+            // Rest on the button past the tooltip delay.
+            for _ in 0..30 {
+                h.step();
+            }
+        },
+    );
+}
+
+#[test]
+fn select() {
+    snapshot_both_with(
+        // A fixed viewport: the open list is an Area.
+        "select",
+        Some(vec2(420.0, 260.0)),
+        &SnapshotOptions::new().threshold(DIALOG_THRESHOLD),
+        |ui| {
+            let t = beau::theme(ui);
+            let mut project = 1;
+            let mut empty: Option<u8> = None;
+            ui.horizontal_top(|ui| {
+                ui.spacing_mut().item_spacing.x = t.space.lg;
+                ui.vertical(|ui| {
+                    ui.set_width(180.0);
+                    let select = ui.add(
+                        Select::new("project", &mut project)
+                            .label("Project")
+                            .option_dot(0, "Backend", Color32::from_rgb(0x3B, 0x82, 0xF6))
+                            .option_dot(1, "Design", Color32::from_rgb(0xE5, 0x48, 0x4D))
+                            .option_dot(2, "Frontend", Color32::from_rgb(0x30, 0xA4, 0x6C)),
+                    );
+                    if ui.ctx().cumulative_pass_nr() == 0 {
+                        Popover::set_open(ui.ctx(), select.id.with("beau.popover"), true);
+                    }
+                });
+                ui.vertical(|ui| {
+                    ui.set_width(180.0);
+                    ui.add(
+                        Select::new("assignee", &mut empty)
+                            .label("Assignee")
+                            .placeholder("Unassigned")
+                            .option(Some(1), "Ibrahim"),
+                    );
+                    ui.add_space(t.space.md);
+                    ui.add_enabled(
+                        false,
+                        Select::new("disabled", &mut project)
+                            .label("Disabled")
+                            .option(1, "Design"),
+                    );
+                });
+            });
+        },
+        |_| {},
     );
 }

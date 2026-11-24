@@ -5,7 +5,7 @@ use eframe::egui::{
 use beau::behavior::ListNav;
 use beau::motion::PresenceList;
 use beau::tokens::TextRole;
-use beau::{Button, Card, Checkbox, Dialog, Size, Switch, TextInput, icons};
+use beau::{Button, Card, Checkbox, Dialog, Select, Size, Switch, TextInput, Tooltip, icons};
 
 use crate::Options;
 use crate::data::{self, Filter, Project, Status, Task};
@@ -33,6 +33,8 @@ pub struct TrackerApp {
     editing: Option<u32>,
     draft_title: String,
     draft_description: String,
+    draft_project: usize,
+    draft_status: Status,
     /// Keep the dialog open after creating a task.
     create_another: bool,
     /// Put keyboard focus back in the title field on the next frame.
@@ -61,6 +63,8 @@ impl TrackerApp {
             editing: None,
             draft_title: String::new(),
             draft_description: String::new(),
+            draft_project: 0,
+            draft_status: Status::Todo,
             create_another: false,
             refocus_title: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -236,6 +240,11 @@ impl TrackerApp {
             self.draft_title.clear();
             self.draft_description.clear();
         }
+        // A fresh draft starts in the project being viewed, as a to-do.
+        if self.draft_title.is_empty() && self.draft_description.is_empty() {
+            self.draft_project = self.project.unwrap_or(0);
+            self.draft_status = Status::Todo;
+        }
         self.dialog_open = true;
     }
 
@@ -245,6 +254,8 @@ impl TrackerApp {
         };
         self.draft_title = task.title.clone();
         self.draft_description = task.description.clone();
+        self.draft_project = task.project;
+        self.draft_status = task.status;
         self.editing = Some(number);
         self.dialog_open = true;
     }
@@ -470,69 +481,73 @@ impl TrackerApp {
         let editing = self
             .editing
             .and_then(|n| self.tasks.iter().find(|t| t.number == n));
-        let (title, description, action) = match editing {
-            Some(task) => (
-                "Edit task",
-                format!(
-                    "BEA-{} in {}.",
-                    task.number, self.projects[task.project].name
-                ),
-                "Save changes",
-            ),
-            None => (
-                "New task",
-                format!(
-                    "Add a task to {}.",
-                    self.projects[self.project.unwrap_or(0)].name
-                ),
-                "Create task",
-            ),
+        let (title, action) = match editing {
+            Some(_) => ("Edit task", "Save changes"),
+            None => ("New task", "Create task"),
         };
         let is_new = editing.is_none();
-        Dialog::new("task")
-            .title(title)
-            .description(description)
-            .open(&mut open)
-            .show(ctx, |ui| {
-                let t = beau::theme(ui);
-                let title = ui.add(
-                    TextInput::new(&mut self.draft_title)
-                        .label("Title")
-                        .placeholder("What needs doing?")
-                        .autofocus(),
-                );
-                if std::mem::take(&mut self.refocus_title) {
-                    title.request_focus();
+        let mut dialog = Dialog::new("task").title(title);
+        if let Some(task) = editing {
+            dialog = dialog.description(format!("BEA-{}", task.number));
+        }
+        dialog.open(&mut open).show(ctx, |ui| {
+            let t = beau::theme(ui);
+            let title = ui.add(
+                TextInput::new(&mut self.draft_title)
+                    .label("Title")
+                    .placeholder("What needs doing?")
+                    .autofocus(),
+            );
+            if std::mem::take(&mut self.refocus_title) {
+                title.request_focus();
+            }
+            if title.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
+                submit = true;
+            }
+            ui.add_space(t.space.lg);
+            ui.add(
+                TextInput::new(&mut self.draft_description)
+                    .label("Description")
+                    .placeholder("Add some detail…")
+                    .multiline(3),
+            );
+            ui.add_space(t.space.lg);
+            ui.columns(2, |cols| {
+                let mut project = Select::new("project", &mut self.draft_project).label("Project");
+                for (i, p) in self.projects.iter().enumerate() {
+                    project = project.option_dot(i, p.name, p.color);
                 }
-                if title.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-                    submit = true;
+                cols[0].add(project);
+                let mut status = Select::new("status", &mut self.draft_status).label("Status");
+                for s in [
+                    Status::Backlog,
+                    Status::Todo,
+                    Status::InProgress,
+                    Status::Done,
+                ] {
+                    status = status.option_icon(s, s.label(), status_icon(s));
                 }
-                ui.add_space(t.space.lg);
-                ui.add(
-                    TextInput::new(&mut self.draft_description)
-                        .label("Description")
-                        .placeholder("Add some detail…")
-                        .multiline(3),
-                );
-                if ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter)) {
-                    submit = true;
-                }
-                Dialog::footer(ui, |ui| {
-                    let can_submit = !self.draft_title.trim().is_empty();
-                    let b = Button::new(action).primary().trailing("⌘↵");
-                    if ui.add_enabled(can_submit, b).clicked() {
-                        submit = true;
-                    }
-                    if ui.add(Button::new("Cancel").ghost()).clicked() {
-                        cancel = true;
-                    }
-                    if is_new {
-                        ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                            ui.add(Checkbox::new(&mut self.create_another).label("Create another"));
-                        });
-                    }
-                });
+                cols[1].add(status);
             });
+            if ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter)) {
+                submit = true;
+            }
+            Dialog::footer(ui, |ui| {
+                let can_submit = !self.draft_title.trim().is_empty();
+                let b = Button::new(action).primary().trailing("⌘↵");
+                if ui.add_enabled(can_submit, b).clicked() {
+                    submit = true;
+                }
+                if ui.add(Button::new("Cancel").ghost()).clicked() {
+                    cancel = true;
+                }
+                if is_new {
+                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        ui.add(Checkbox::new(&mut self.create_another).label("Create another"));
+                    });
+                }
+            });
+        });
         self.dialog_open = open && !cancel;
         if submit && self.dialog_open {
             self.submit_task();
@@ -550,6 +565,8 @@ impl TrackerApp {
             if let Some(task) = self.tasks.iter_mut().find(|t| t.number == number) {
                 task.title = title;
                 task.description = description;
+                task.project = self.draft_project;
+                task.status = self.draft_status;
             }
             self.dialog_open = false;
             return;
@@ -559,18 +576,36 @@ impl TrackerApp {
             number,
             title,
             description,
-            status: Status::Todo,
+            status: self.draft_status,
             priority: data::Priority::None,
-            project: self.project.unwrap_or(0),
+            project: self.draft_project,
             due: None,
             assignee: Some("IH"),
         });
-        // A new task is a to-do: show it if the current filter would hide it.
-        if !Filter::matches(self.filter, self.tasks.last().expect("just pushed")) {
-            self.filter = Filter::Active;
+        // Show the new task if the current view would hide it.
+        let task = self.tasks.last().expect("just pushed");
+        if !self.filter.matches(task) {
+            self.filter = match task.status {
+                Status::Backlog => Filter::Backlog,
+                Status::Done => Filter::Done,
+                Status::Todo | Status::InProgress => Filter::Active,
+            };
+        }
+        if self.project.is_some_and(|p| p != task.project) {
+            self.project = None;
         }
         self.dialog_open = self.create_another;
         self.refocus_title = self.create_another;
+    }
+}
+
+/// The icon for a status in menus and selects.
+fn status_icon(status: Status) -> beau::Icon {
+    match status {
+        Status::Backlog => icons::CIRCLE_DASHED,
+        Status::Todo => icons::CIRCLE,
+        Status::InProgress => icons::CIRCLE_DOT,
+        Status::Done => icons::CIRCLE_CHECK,
     }
 }
 
@@ -782,7 +817,11 @@ fn task_row(ui: &mut Ui, task: &Task, live: bool, cx: &mut RowCx<'_>) {
         let delete = Button::icon_only(icons::TRASH_2, "Delete task")
             .ghost()
             .size(Size::Sm);
-        if child.add(delete).clicked() {
+        let delete = child.add(delete);
+        Tooltip::new("Delete task")
+            .shortcut("Del")
+            .show(&child, &delete);
+        if delete.clicked() {
             cx.actions.push(Action::Delete(number));
         }
     }

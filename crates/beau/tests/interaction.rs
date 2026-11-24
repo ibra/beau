@@ -2,7 +2,10 @@
 //! through `egui_kittest`. They need no renderer.
 
 use egui::{Key, pos2};
-use egui_kittest::{Harness, kittest::Queryable as _};
+use egui_kittest::{
+    Harness,
+    kittest::{NodeT as _, Queryable as _},
+};
 
 /// A 200pt slider over 0..=100 in whole steps.
 fn slider_harness() -> Harness<'static, u32> {
@@ -84,4 +87,297 @@ fn slider_drag_follows_the_pointer_and_clamps() {
     harness.drop_at(pos2(rail.left() + 1.0, y));
     harness.run();
     assert_eq!(*harness.state(), 0);
+}
+
+/// A page with a "Share" button that opens a popover, and a "Page" button
+/// behind it. The state counts clicks on "Page".
+fn popover_harness() -> Harness<'static, u32> {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(480.0, 320.0))
+        .with_max_steps(64)
+        .with_context_setup(beau::install)
+        .build_ui_state(
+            |ui, page_clicks: &mut u32| {
+                if ui.button("Page").clicked() {
+                    *page_clicks += 1;
+                }
+                let trigger = ui.add(beau::Button::new("Share"));
+                beau::Popover::new(&trigger).show(ui.ctx(), |ui| {
+                    let _ = ui.button("Inside");
+                    if ui.button("Done").clicked() {
+                        ui.close();
+                    }
+                    let nested = ui.button("More");
+                    beau::Popover::new(&nested).show(ui.ctx(), |ui| {
+                        let _ = ui.button("Nested");
+                    });
+                });
+            },
+            0,
+        );
+    harness.run();
+    harness
+}
+
+fn is_shown(harness: &Harness<'_, u32>, label: &str) -> bool {
+    harness.query_by_label(label).is_some()
+}
+
+#[test]
+fn popover_toggles_from_its_trigger_and_closes_on_escape() {
+    let mut harness = popover_harness();
+    assert!(!is_shown(&harness, "Inside"));
+
+    harness.get_by_label("Share").click();
+    harness.run();
+    assert!(is_shown(&harness, "Inside"));
+
+    harness.key_press(Key::Escape);
+    harness.run();
+    assert!(!is_shown(&harness, "Inside"), "Escape closes it");
+}
+
+#[test]
+fn popover_closes_on_outside_click_without_clicking_the_page() {
+    let mut harness = popover_harness();
+    harness.get_by_label("Share").click();
+    harness.run();
+
+    // A click inside keeps it open.
+    harness.get_by_label("Inside").click();
+    harness.run();
+    assert!(is_shown(&harness, "Inside"));
+
+    // The first click outside only closes it: the page doesn't react.
+    harness.get_by_label("Page").click();
+    harness.run();
+    assert!(!is_shown(&harness, "Inside"));
+    assert_eq!(*harness.state(), 0);
+    harness.get_by_label("Page").click();
+    harness.run();
+    assert_eq!(*harness.state(), 1);
+}
+
+#[test]
+fn popover_content_closes_it_with_ui_close() {
+    let mut harness = popover_harness();
+    harness.get_by_label("Share").click();
+    harness.run();
+    harness.get_by_label("Done").click();
+    harness.run();
+    assert!(!is_shown(&harness, "Inside"));
+}
+
+#[test]
+fn nested_popovers_close_innermost_first() {
+    let mut harness = popover_harness();
+    harness.get_by_label("Share").click();
+    harness.run();
+    harness.get_by_label("More").click();
+    harness.run();
+    assert!(is_shown(&harness, "Nested"));
+
+    // A click in the outer popover closes only the nested one.
+    harness.get_by_label("Inside").click();
+    harness.run();
+    assert!(!is_shown(&harness, "Nested"));
+    assert!(is_shown(&harness, "Inside"));
+
+    harness.get_by_label("More").click();
+    harness.run();
+    harness.key_press(Key::Escape);
+    harness.run();
+    assert!(!is_shown(&harness, "Nested"));
+    assert!(is_shown(&harness, "Inside"), "one Escape closes one level");
+    harness.key_press(Key::Escape);
+    harness.run();
+    assert!(!is_shown(&harness, "Inside"));
+}
+
+#[test]
+fn popover_returns_focus_to_its_trigger() {
+    let mut harness = popover_harness();
+    harness.get_by_label("Share").focus();
+    harness.run();
+    harness.key_press(Key::Enter);
+    harness.run();
+    assert!(is_shown(&harness, "Inside"));
+
+    // Tab stays inside the popover.
+    for _ in 0..5 {
+        harness.key_press(Key::Tab);
+        harness.run();
+        let focused = harness.get_by(|node| node.is_focused());
+        let label = focused.accesskit_node().label().unwrap_or_default();
+        assert!(
+            ["Inside", "Done", "More"].contains(&label.as_str()),
+            "focus escaped to {label:?}"
+        );
+    }
+
+    harness.key_press(Key::Escape);
+    harness.run();
+    assert!(harness.get_by_label("Share").accesskit_node().is_focused());
+}
+
+#[test]
+fn tooltip_shows_after_a_delay_and_hides_when_pressed() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(320.0, 200.0))
+        .with_context_setup(beau::install)
+        .build_ui(|ui| {
+            ui.add_space(60.0);
+            let reset = ui.add(beau::Button::new("Reset"));
+            beau::Tooltip::new("Restore defaults").show(ui, &reset);
+        });
+    harness.run();
+    let tip = |h: &Harness<'_>| h.query_by_label("Restore defaults").is_some();
+
+    harness.get_by_label("Reset").hover();
+    harness.step();
+    assert!(!tip(&harness), "not before the delay");
+    for _ in 0..40 {
+        harness.step();
+    }
+    assert!(tip(&harness), "shown after resting on the widget");
+
+    harness.get_by_label("Reset").click();
+    for _ in 0..30 {
+        harness.step();
+    }
+    assert!(!tip(&harness), "pressing the widget hides it");
+}
+
+/// A "Priority" select over 1..=3, starting at 2 (Medium).
+fn select_harness() -> Harness<'static, u32> {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(360.0, 320.0))
+        .with_max_steps(64)
+        .with_context_setup(beau::install)
+        .build_ui_state(
+            |ui, value: &mut u32| {
+                let _ = ui.button("Before");
+                ui.add(
+                    beau::Select::new("priority", value)
+                        .label("Priority")
+                        .width(160.0)
+                        .option(1, "Low")
+                        .option(2, "Medium")
+                        .option(3, "High"),
+                );
+            },
+            2,
+        );
+    harness.run();
+    harness
+}
+
+fn focused_label(harness: &Harness<'_, u32>) -> String {
+    harness
+        .query_by(|node| node.is_focused())
+        .map(|n| n.accesskit_node().label().unwrap_or_default())
+        .unwrap_or_else(|| "<none>".to_owned())
+}
+
+#[test]
+fn select_chooses_with_the_pointer() {
+    let mut harness = select_harness();
+    assert!(harness.query_by_label("High").is_none());
+
+    harness.get_by_label("Priority").click();
+    harness.run();
+    harness.get_by_label("High").click();
+    harness.run();
+    assert_eq!(*harness.state(), 3);
+    assert!(
+        harness.query_by_label("Low").is_none(),
+        "closes after a choice"
+    );
+}
+
+#[test]
+fn select_is_keyboard_operable_end_to_end() {
+    let mut harness = select_harness();
+    harness.get_by_label("Before").focus();
+    harness.run();
+    harness.key_press(Key::Tab);
+    harness.run();
+    assert_eq!(focused_label(&harness), "Priority");
+
+    // Down opens the list with the chosen option focused.
+    harness.key_press(Key::ArrowDown);
+    harness.run();
+    assert_eq!(focused_label(&harness), "Medium");
+
+    harness.key_press(Key::ArrowDown);
+    harness.run();
+    assert_eq!(focused_label(&harness), "High");
+    harness.key_press(Key::Enter);
+    harness.run();
+    assert_eq!(*harness.state(), 3);
+    assert!(harness.query_by_label("Low").is_none());
+    assert_eq!(focused_label(&harness), "Priority", "focus returns");
+
+    // Escape closes without choosing.
+    harness.key_press(Key::Enter);
+    harness.run();
+    harness.key_press(Key::Home);
+    harness.run();
+    assert_eq!(focused_label(&harness), "Low");
+    harness.key_press(Key::Escape);
+    harness.run();
+    assert!(harness.query_by_label("Low").is_none());
+    assert_eq!(*harness.state(), 3);
+    assert_eq!(focused_label(&harness), "Priority");
+}
+
+#[test]
+fn select_in_a_dialog_closes_before_the_dialog() {
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(640.0, 480.0))
+        .with_max_steps(64)
+        .with_context_setup(beau::install)
+        .build_ui_state(
+            |ui, (open, value): &mut (bool, u32)| {
+                beau::Dialog::new("dialog")
+                    .title("New task")
+                    .open(open)
+                    .show(ui.ctx(), |ui| {
+                        ui.add(
+                            beau::Select::new("status", value)
+                                .label("Status")
+                                .option(1, "Todo")
+                                .option(2, "Done"),
+                        );
+                        let _ = ui.button("Elsewhere");
+                    });
+            },
+            (true, 1),
+        );
+    harness.run();
+
+    harness.get_by_label("Status").click();
+    harness.run();
+    assert!(harness.query_by_label("Done").is_some());
+    harness.key_press(Key::Escape);
+    harness.run();
+    assert!(
+        harness.query_by_label("Done").is_none(),
+        "Escape closes the list"
+    );
+    assert!(harness.state().0, "but not the dialog");
+
+    harness.get_by_label("Status").click();
+    harness.run();
+    harness.get_by_label("Elsewhere").click();
+    harness.run();
+    assert!(harness.query_by_label("Done").is_none());
+    assert!(
+        harness.state().0,
+        "a click in the dialog only closes the list"
+    );
+
+    harness.key_press(Key::Escape);
+    harness.run();
+    assert!(!harness.state().0, "then Escape closes the dialog");
 }
