@@ -116,7 +116,10 @@ Releases are automated with
 [release-please](https://github.com/googleapis/release-please): it keeps a
 release pull request up to date with the next version and the generated
 [changelog](crates/beau/CHANGELOG.md). Merging that pull request tags the
-release and publishes the GitHub release notes.
+release, publishes the GitHub release notes and publishes the crate to
+[crates.io](https://crates.io/crates/beau) through trusted publishing (no
+API token is stored in the repository). CI checks on every pull request that
+the crate still packages and builds from its published files alone.
 
 ## Licensing
 
