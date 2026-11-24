@@ -5,7 +5,7 @@ use eframe::egui::{
 use beau::behavior::ListNav;
 use beau::motion::PresenceList;
 use beau::tokens::TextRole;
-use beau::{Button, Card, Checkbox, Dialog, Size, Switch, TextInput, icons};
+use beau::{Button, Card, Checkbox, Dialog, Size, Switch, TextInput, Tooltip, icons};
 
 use crate::Options;
 use crate::data::{self, Filter, Project, Status, Task};
@@ -782,7 +782,11 @@ fn task_row(ui: &mut Ui, task: &Task, live: bool, cx: &mut RowCx<'_>) {
         let delete = Button::icon_only(icons::TRASH_2, "Delete task")
             .ghost()
             .size(Size::Sm);
-        if child.add(delete).clicked() {
+        let delete = child.add(delete);
+        Tooltip::new("Delete task")
+            .shortcut("Del")
+            .show(&child, &delete);
+        if delete.clicked() {
             cx.actions.push(Action::Delete(number));
         }
     }
