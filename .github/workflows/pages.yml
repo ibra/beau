@@ -40,7 +40,7 @@ jobs:
             | tar -xz -C /usr/local/bin trunk
           trunk --version
       - id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
       # Asset URLs must include the repository subpath (/beau/).
       - name: Build
         working-directory: examples/tracker
