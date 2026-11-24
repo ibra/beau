@@ -40,12 +40,49 @@ fn target(len: usize, current: Option<usize>, step: Step, wrap: bool) -> Option<
     })
 }
 
-#[derive(Clone, Default)]
+/// How long type-ahead keeps what was typed, in seconds.
+const TYPEAHEAD_TIMEOUT: f64 = 1.0;
+
+/// The item type-ahead leads to: the first one, after the current item for
+/// a fresh single character and from it otherwise, whose text starts with
+/// `query`, ignoring case. Typing one character repeatedly cycles through
+/// the items that start with it.
+fn typeahead_target(
+    texts: &[Option<String>],
+    current: Option<usize>,
+    query: &str,
+) -> Option<usize> {
+    let query = query.to_lowercase();
+    let mut chars = query.chars();
+    let first = chars.next()?;
+    let repeated = chars.all(|c| c == first);
+    let (query, skip_current) = if repeated {
+        (first.to_string(), true)
+    } else {
+        (query, false)
+    };
+    let n = texts.len();
+    let start = match current {
+        Some(i) if skip_current => i + 1,
+        Some(i) => i,
+        None => 0,
+    };
+    (0..n).map(|k| (start + k) % n).find(|&i| {
+        texts[i]
+            .as_ref()
+            .is_some_and(|t| t.to_lowercase().starts_with(&query))
+    })
+}
+
+#[derive(Clone, Debug, Default)]
 struct NavState {
     /// Key of the item that last had focus: the list's tab stop.
     current: Option<Id>,
     /// Keys of the items shown in the previous pass.
     keys: Vec<Id>,
+    /// Type-ahead: what was typed, and when last.
+    typed: String,
+    typed_at: f64,
 }
 
 /// Keyboard navigation for a vertical list: one tab stop, arrow keys inside.
@@ -57,9 +94,13 @@ struct NavState {
 /// it. Enter and Space activate the focused item the way egui activates any
 /// focused widget: its [`Response::clicked`] is true.
 ///
+/// With [`ListNav::typeahead`], typing moves focus to the next item whose
+/// text (given with [`ListNav::item_text`]) starts with what was typed.
+///
 /// It draws nothing. [`ListNav::item`] returns whether the item has focus, so
 /// the caller can paint it as selected. For screen readers the list is a
-/// `ListBox` and the items are `ListBoxOption`s.
+/// `ListBox` and the items are `ListBoxOption`s, unless set with
+/// [`ListNav::roles`].
 ///
 /// Create one per pass, allocate each row with [`ListNav::sense`], report it
 /// with [`ListNav::item`], and end with [`ListNav::finish`]:
@@ -93,6 +134,11 @@ pub struct ListNav {
     id: Id,
     wrap: bool,
     idle_keys: bool,
+    typeahead: bool,
+    roles: (Role, Role),
+    state: NavState,
+    /// Each reported item's type-ahead text, in order.
+    texts: Vec<Option<String>>,
     /// Key of the tab stop, if it is still in the list.
     current: Option<Id>,
     /// `(key, widget id)` of each item reported this pass, in order.
@@ -109,8 +155,12 @@ impl ListNav {
             id,
             wrap: false,
             idle_keys: false,
+            typeahead: false,
+            roles: (Role::ListBox, Role::ListBoxOption),
             // A tab stop that is no longer shown falls back to the first item.
             current: state.current.filter(|c| state.keys.contains(c)),
+            state,
+            texts: Vec::new(),
             items: Vec::new(),
             focused: None,
         }
@@ -128,6 +178,21 @@ impl ListNav {
     /// Off by default.
     pub fn idle_keys(mut self, idle_keys: bool) -> Self {
         self.idle_keys = idle_keys;
+        self
+    }
+
+    /// Type-ahead: typing a letter moves focus to the next item that starts
+    /// with it, and typing quickly matches longer prefixes. Items take part
+    /// when reported with [`ListNav::item_text`]. Off by default.
+    pub fn typeahead(mut self, typeahead: bool) -> Self {
+        self.typeahead = typeahead;
+        self
+    }
+
+    /// The accessibility roles of the list and its items (`ListBox` and
+    /// `ListBoxOption` by default), e.g. `Menu` and `MenuItem`.
+    pub fn roles(mut self, list: Role, item: Role) -> Self {
+        self.roles = (list, item);
         self
     }
 
@@ -155,6 +220,27 @@ impl ListNav {
     /// [`Response::widget_info`] before this, not after: it would replace
     /// the item's role.
     pub fn item(&mut self, ui: &Ui, key: impl AsIdSalt, response: &Response) -> bool {
+        self.report(ui, key, None, response)
+    }
+
+    /// [`ListNav::item`] with the text that type-ahead matches against.
+    pub fn item_text(
+        &mut self,
+        ui: &Ui,
+        key: impl AsIdSalt,
+        text: &str,
+        response: &Response,
+    ) -> bool {
+        self.report(ui, key, Some(text.to_owned()), response)
+    }
+
+    fn report(
+        &mut self,
+        ui: &Ui,
+        key: impl AsIdSalt,
+        text: Option<String>,
+        response: &Response,
+    ) -> bool {
         if ui.is_sizing_pass() || !ui.is_enabled() {
             return false;
         }
@@ -180,11 +266,13 @@ impl ListNav {
                 response.scroll_to_me(None);
             }
         }
+        let role = self.roles.1;
         ui.ctx().accesskit_node_builder(response.id, |node| {
-            node.set_role(Role::ListBoxOption);
+            node.set_role(role);
             node.set_selected(focused);
         });
         self.items.push((key, response.id));
+        self.texts.push(text);
         focused
     }
 
@@ -192,8 +280,9 @@ impl ListNav {
     /// the `Ui` that contains the items. Returns true if a key moved focus.
     pub fn finish(self, ui: &Ui) -> bool {
         let len = self.items.len();
+        let list_role = self.roles.0;
         ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
-            node.set_role(Role::ListBox);
+            node.set_role(list_role);
             node.set_size_of_set(len);
         });
         for (i, (_, widget)) in self.items.iter().enumerate() {
@@ -220,9 +309,41 @@ impl ListNav {
                 })
             })
             .flatten();
-        let to = step
+        let mut to = step
             .and_then(|step| target(len, self.focused, step, self.wrap))
             .filter(|to| Some(*to) != self.focused);
+
+        let mut typed = self.state.typed;
+        let mut typed_at = self.state.typed_at;
+        if self.typeahead && (self.focused.is_some() || idle) {
+            let now = ui.input(|i| i.time);
+            let text: String = ui.input(|i| {
+                i.events
+                    .iter()
+                    .filter_map(|e| match e {
+                        egui::Event::Text(t) => Some(t.as_str()),
+                        _ => None,
+                    })
+                    .collect()
+            });
+            if now - typed_at > TYPEAHEAD_TIMEOUT {
+                typed.clear();
+            }
+            // A leading space is Space activating the item, not a search.
+            let text = if typed.is_empty() {
+                text.trim_start()
+            } else {
+                &text
+            };
+            if !text.is_empty() {
+                typed.push_str(text);
+                typed_at = now;
+                if to.is_none() {
+                    to = typeahead_target(&self.texts, self.focused, &typed)
+                        .filter(|to| Some(*to) != self.focused);
+                }
+            }
+        }
 
         let mut current = self.current;
         if let Some(to) = to {
@@ -236,7 +357,13 @@ impl ListNav {
             });
         }
         let keys = self.items.iter().map(|(k, _)| *k).collect();
-        ui.data_mut(|d| d.insert_temp(self.id, NavState { current, keys }));
+        let state = NavState {
+            current,
+            keys,
+            typed,
+            typed_at,
+        };
+        ui.data_mut(|d| d.insert_temp(self.id, state));
         to.is_some()
     }
 }
@@ -245,6 +372,26 @@ impl ListNav {
 mod tests {
     use super::*;
     use egui::{Event, RawInput, vec2};
+
+    #[test]
+    fn typeahead_matches_prefixes_and_cycles() {
+        let texts: Vec<Option<String>> = ["Edit", "Duplicate", "Delete", "Archive", "Deploy"]
+            .into_iter()
+            .map(|t| Some(t.to_owned()))
+            .chain([None])
+            .collect();
+        // A first letter goes to the next item starting with it, wrapping.
+        assert_eq!(typeahead_target(&texts, None, "d"), Some(1));
+        assert_eq!(typeahead_target(&texts, Some(1), "d"), Some(2));
+        assert_eq!(typeahead_target(&texts, Some(4), "d"), Some(1));
+        // Repeating the letter keeps cycling.
+        assert_eq!(typeahead_target(&texts, Some(1), "dd"), Some(2));
+        // A longer prefix searches from the current item, ignoring case.
+        assert_eq!(typeahead_target(&texts, Some(2), "DEP"), Some(4));
+        assert_eq!(typeahead_target(&texts, Some(2), "del"), Some(2));
+        assert_eq!(typeahead_target(&texts, Some(0), "x"), None);
+        assert_eq!(typeahead_target(&texts, None, ""), None);
+    }
 
     #[test]
     fn steps() {
